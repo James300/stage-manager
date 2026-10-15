@@ -19,7 +19,7 @@ The app is available at [http://localhost:3000](http://localhost:3000).
 - `npm run build` applies Drizzle migrations and then creates the production build. Configure `DATABASE_URL` before running it.
 - `npm run build:local` creates a production build without applying migrations, for local build verification.
 - `npm run db:generate` creates a Drizzle migration from schema changes.
-- `npm run db:migrate` applies migrations.
+- `npm run db:migrate` applies migrations using the PostgreSQL driver. The build-time migration requires a PostgreSQL connection available to the Vercel build environment.
 - `npm run db:studio` opens Drizzle Studio.
 
 The cast directory is available at `/cast` and requires an administrator account. Only addresses listed in `ADMIN_EMAILS` can register, and new accounts must verify their email before signing in.
