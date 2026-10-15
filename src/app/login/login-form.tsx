@@ -10,11 +10,14 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resending, setResending] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setNotice("");
+    setUnverifiedEmail("");
     setPending(true);
 
     const form = new FormData(event.currentTarget);
@@ -46,6 +49,7 @@ export function LoginForm() {
 
         if (result.error) {
           setError(result.error.message ?? "Unable to sign in.");
+          if (result.error.code === "EMAIL_NOT_VERIFIED") setUnverifiedEmail(email);
         } else {
           router.replace("/cast");
           router.refresh();
@@ -55,6 +59,29 @@ export function LoginForm() {
       setError(cause instanceof Error ? cause.message : "The authentication request failed.");
     } finally {
       setPending(false);
+    }
+  }
+
+  async function resendVerificationEmail() {
+    setError("");
+    setNotice("");
+    setResending(true);
+
+    try {
+      const result = await authClient.sendVerificationEmail({
+        email: unverifiedEmail,
+        callbackURL: "/cast",
+      });
+
+      if (result.error) {
+        setError(result.error.message ?? "Unable to resend the verification email.");
+      } else {
+        setNotice("If the account needs verification, a new verification email has been sent.");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The verification email could not be sent.");
+    } finally {
+      setResending(false);
     }
   }
 
@@ -107,6 +134,16 @@ export function LoginForm() {
           {notice}
         </p>
       )}
+      {unverifiedEmail && !createAccount && (
+        <button
+          className="button-secondary mb-4 w-full justify-center"
+          type="button"
+          onClick={resendVerificationEmail}
+          disabled={pending || resending}
+        >
+          {resending ? "Sending..." : "Resend verification email"}
+        </button>
+      )}
       <button className="button-primary w-full justify-center" type="submit" disabled={pending}>
         {pending ? "Please wait..." : createAccount ? "Create account" : "Sign in"}
       </button>
@@ -117,6 +154,7 @@ export function LoginForm() {
           setCreateAccount((value) => !value);
           setError("");
           setNotice("");
+          setUnverifiedEmail("");
         }}
       >
         {createAccount ? "Already have an account? Sign in" : "Need an account? Create one"}
