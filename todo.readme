@@ -1,0 +1,55 @@
+# Project TODO
+
+Track implementation work here. Mark items complete with `[x]` and add new work in the relevant section.
+
+## Foundation
+
+- [x] Initialize the Next.js App Router application with TypeScript.
+- [x] Configure Tailwind CSS and shadcn/ui foundations.
+- [x] Add Neon, Drizzle, authentication, validation, and email dependencies.
+- [x] Add environment-variable example and Vercel-ready configuration.
+- [ ] Create Neon development and production databases and configure deployment secrets.
+- [ ] Add CI checks for linting, type checking, and production builds.
+
+## Data and Access
+
+- [ ] Define production-scoped database tables and enums.
+- [ ] Add Drizzle migrations and seed development data.
+- [ ] Configure Better Auth with Drizzle and admin login.
+- [ ] Implement production-scoped Director and Stage Manager roles.
+- [ ] Enforce authorization in every admin page, action, and data query.
+- [ ] Define cast PII retention and deletion policies.
+
+## Scenes and Cast
+
+- [ ] Build scene create/edit/list workflows and readiness status changes.
+- [ ] Build cast directory and profiles.
+- [ ] Model characters and scene/actor assignments.
+- [ ] Add recurring and one-off availability data models.
+
+## Availability Collection
+
+- [ ] Create rehearsal-week administration workflow.
+- [ ] Implement secure random tokens, hashed storage, expiry, revocation, and rate limiting.
+- [ ] Build responsive availability submission page.
+- [ ] Integrate Resend delivery and track delivery outcomes.
+- [ ] Decide whether SMS is in scope and select a provider if needed.
+
+## Scheduling and Calendars
+
+- [ ] Specify slot granularity, timezone rules, readiness scores, and optimization weights.
+- [ ] Implement Phase 1 availability-constrained schedule generation.
+- [ ] Implement Phase 2 generation of up to three weighted schedule options.
+- [ ] Prevent actor overlap in schedule generation and persistence.
+- [ ] Build schedule review, selection, and publication workflow.
+- [ ] Build schedule page and master availability calendar.
+- [ ] Send idempotent notifications when a schedule is finalized.
+- [ ] Benchmark generation against the 3–5 second target and dashboard loads against the 2 second target.
+
+## Quality and Operations
+
+- [ ] Add unit tests for availability, authorization, and scheduling rules.
+- [ ] Add integration tests for database constraints and magic-link lifecycle.
+- [ ] Add accessible responsive workflow tests for cast and admin views.
+- [ ] Configure production observability, error reporting, and notification retries.
+- [ ] Document local development, deployment, backups, and incident procedures.
