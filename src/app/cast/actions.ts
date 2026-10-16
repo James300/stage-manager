@@ -27,6 +27,11 @@ const assignmentSchema = z.object({
   characterId: z.string().uuid(),
 });
 
+export type CreateCastItemState = {
+  error?: string;
+  created?: boolean;
+};
+
 function readText(formData: FormData, field: string) {
   const value = formData.get(field);
   return typeof value === "string" ? value.trim() : "";
@@ -50,20 +55,33 @@ function readCharacter(formData: FormData) {
   });
 }
 
-export async function createPerformer(formData: FormData) {
+export async function createPerformer(
+  _previousState: CreateCastItemState,
+  formData: FormData,
+): Promise<CreateCastItemState> {
   await requireAdmin();
-  const input = readPerformer(formData);
+  const parsed = performerSchema.omit({ id: true }).safeParse({
+    name: readText(formData, "name"),
+    email: readText(formData, "email"),
+    phone: readText(formData, "phone"),
+    notes: readText(formData, "notes"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the performer details and try again." };
+  }
   const production = await getCurrentProduction();
 
   await getDb().insert(performers).values({
     productionId: production.id,
-    name: input.name,
-    email: input.email || null,
-    phone: input.phone || null,
-    notes: input.notes || null,
+    name: parsed.data.name,
+    email: parsed.data.email || null,
+    phone: parsed.data.phone || null,
+    notes: parsed.data.notes || null,
   });
 
+  revalidatePath("/performers");
   revalidatePath("/cast");
+  return { created: true };
 }
 
 export async function updatePerformer(formData: FormData) {
@@ -85,6 +103,7 @@ export async function updatePerformer(formData: FormData) {
     .returning({ id: performers.id });
 
   if (!updated) throw new Error("Performer not found in the current production.");
+  revalidatePath("/performers");
   revalidatePath("/cast");
 }
 
@@ -99,21 +118,40 @@ export async function deletePerformer(formData: FormData) {
     .returning({ id: performers.id });
 
   if (!deleted) throw new Error("Performer not found in the current production.");
+  revalidatePath("/performers");
   revalidatePath("/cast");
 }
 
-export async function createCharacter(formData: FormData) {
+export async function createCharacter(
+  _previousState: CreateCastItemState,
+  formData: FormData,
+): Promise<CreateCastItemState> {
   await requireAdmin();
-  const input = readCharacter(formData);
+  const parsed = characterSchema.omit({ id: true }).safeParse({
+    name: readText(formData, "name"),
+    notes: readText(formData, "notes"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the character details and try again." };
+  }
   const production = await getCurrentProduction();
+  const db = getDb();
+  const [duplicate] = await db
+    .select({ id: characters.id })
+    .from(characters)
+    .where(and(eq(characters.productionId, production.id), eq(characters.name, parsed.data.name)))
+    .limit(1);
+  if (duplicate) return { error: `${parsed.data.name} already exists in the cast.` };
 
-  await getDb().insert(characters).values({
+  await db.insert(characters).values({
     productionId: production.id,
-    name: input.name,
-    notes: input.notes || null,
+    name: parsed.data.name,
+    notes: parsed.data.notes || null,
   });
 
   revalidatePath("/cast");
+  revalidatePath("/performers");
+  return { created: true };
 }
 
 export async function updateCharacter(formData: FormData) {
@@ -134,6 +172,7 @@ export async function updateCharacter(formData: FormData) {
 
   if (!updated) throw new Error("Character not found in the current production.");
   revalidatePath("/cast");
+  revalidatePath("/performers");
 }
 
 export async function deleteCharacter(formData: FormData) {
@@ -148,6 +187,7 @@ export async function deleteCharacter(formData: FormData) {
 
   if (!deleted) throw new Error("Character not found in the current production.");
   revalidatePath("/cast");
+  revalidatePath("/performers");
 }
 
 export async function assignCharacter(formData: FormData) {
@@ -181,6 +221,7 @@ export async function assignCharacter(formData: FormData) {
     })
     .onConflictDoNothing();
 
+  revalidatePath("/performers");
   revalidatePath("/cast");
 }
 
@@ -216,5 +257,6 @@ export async function unassignCharacter(formData: FormData) {
       ),
     );
 
+  revalidatePath("/performers");
   revalidatePath("/cast");
 }

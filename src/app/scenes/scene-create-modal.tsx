@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createScene, type CreateSceneState } from "@/app/scenes/actions";
@@ -30,12 +31,18 @@ export function SceneCreateModal() {
 
   return (
     <>
-      <button className="button-primary" onClick={() => setOpen(true)} type="button">
-        Create scene
+      <button
+        aria-label="Add scene"
+        className="icon-button"
+        onClick={() => setOpen(true)}
+        title="Add scene"
+        type="button"
+      >
+        <Plus aria-hidden="true" size={20} />
       </button>
       <dialog
         ref={dialogRef}
-        className="w-[min(36rem,calc(100%-2rem))] rounded-2xl border border-black/10 bg-[var(--background)] p-0 shadow-xl backdrop:bg-black/40"
+        className="modal-dialog"
         aria-labelledby="create-scene-title"
         onClose={() => setOpen(false)}
       >
