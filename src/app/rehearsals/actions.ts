@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -77,25 +78,23 @@ export async function createRehearsal(
   }
 
   const db = getDb();
-  await db.transaction(async (tx) => {
-    const [rehearsal] = await tx
-      .insert(rehearsals)
-      .values({
-        productionId: production.id,
-        startsAt: new Date(parsed.data.startsAt),
-        durationMinutes: parsed.data.durationMinutes,
-        timeZone: parsed.data.timeZone,
-      })
-      .returning({ id: rehearsals.id });
-
-    await tx.insert(rehearsalScenes).values(
+  const rehearsalId = randomUUID();
+  await db.batch([
+    db.insert(rehearsals).values({
+      id: rehearsalId,
+      productionId: production.id,
+      startsAt: new Date(parsed.data.startsAt),
+      durationMinutes: parsed.data.durationMinutes,
+      timeZone: parsed.data.timeZone,
+    }),
+    db.insert(rehearsalScenes).values(
       parsed.data.sceneIds.map((sceneId) => ({
-        rehearsalId: rehearsal.id,
+        rehearsalId,
         sceneId,
         productionId: production.id,
       })),
-    );
-  });
+    ),
+  ]);
 
   revalidatePath("/rehearsals");
   return { saved: true };
@@ -121,8 +120,15 @@ export async function updateRehearsal(
   }
 
   const db = getDb();
-  const updatedId = await db.transaction(async (tx) => {
-    const [updated] = await tx
+  const [existing] = await db
+    .select({ id: rehearsals.id })
+    .from(rehearsals)
+    .where(and(eq(rehearsals.id, parsed.data.id), eq(rehearsals.productionId, production.id)))
+    .limit(1);
+  if (!existing) return { error: "Rehearsal not found in the current production." };
+
+  await db.batch([
+    db
       .update(rehearsals)
       .set({
         startsAt: new Date(parsed.data.startsAt),
@@ -131,27 +137,20 @@ export async function updateRehearsal(
         status: parsed.data.status,
         updatedAt: new Date(),
       })
-      .where(and(eq(rehearsals.id, parsed.data.id), eq(rehearsals.productionId, production.id)))
-      .returning({ id: rehearsals.id });
-
-    if (!updated) return null;
-
-    await tx
+      .where(and(eq(rehearsals.id, existing.id), eq(rehearsals.productionId, production.id))),
+    db
       .delete(rehearsalScenes)
-      .where(and(eq(rehearsalScenes.rehearsalId, updated.id), eq(rehearsalScenes.productionId, production.id)));
-    await tx.insert(rehearsalScenes).values(
+      .where(and(eq(rehearsalScenes.rehearsalId, existing.id), eq(rehearsalScenes.productionId, production.id))),
+    db.insert(rehearsalScenes).values(
       parsed.data.sceneIds.map((sceneId) => ({
-        rehearsalId: updated.id,
+        rehearsalId: existing.id,
         sceneId,
         productionId: production.id,
       })),
-    );
-    return updated.id;
-  });
-
-  if (!updatedId) return { error: "Rehearsal not found in the current production." };
+    ),
+  ]);
 
   revalidatePath("/rehearsals");
-  revalidatePath(`/rehearsals/${updatedId}`);
+  revalidatePath(`/rehearsals/${existing.id}`);
   return { saved: true };
 }
