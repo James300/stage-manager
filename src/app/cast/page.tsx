@@ -58,6 +58,9 @@ export default async function CastPage() {
           INTO THE WOODS
         </Link>
         <div className="flex items-center gap-4 text-sm text-[var(--muted)]">
+          <Link className="font-medium text-[var(--accent)]" href="/scenes">
+            Scenes
+          </Link>
           <span>{admin.name}</span>
           <SignOutButton />
         </div>

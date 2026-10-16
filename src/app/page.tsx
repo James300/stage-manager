@@ -17,15 +17,17 @@ export default function Home() {
           Keep the whole cast in sync.
         </h1>
         <p className="mt-5 max-w-xl text-lg leading-8 text-[var(--muted)]">
-          Manage performer details, organize characters, and keep every role assignment
-          up to date for Into the Woods.
+          Organize scenes and cast details, and keep every role assignment up to date
+          for Into the Woods.
         </p>
-        <Link
-          className="button-primary mt-8"
-          href="/cast"
-        >
-          Open cast directory
-        </Link>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link className="button-primary" href="/scenes">
+            Open scenes
+          </Link>
+          <Link className="button-secondary" href="/cast">
+            Open cast directory
+          </Link>
+        </div>
       </section>
       <footer className="border-t border-black/10 pt-5 text-sm text-[var(--muted)]">
         Into the Woods rehearsal team

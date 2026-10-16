@@ -1,6 +1,7 @@
 import {
   boolean,
   foreignKey,
+  integer,
   index,
   pgTable,
   primaryKey,
@@ -116,6 +117,26 @@ export const characters = pgTable(
     index("characters_production_id_idx").on(table.productionId),
     unique("characters_production_name_unique").on(table.productionId, table.name),
     unique("characters_id_production_unique").on(table.id, table.productionId),
+  ],
+);
+
+export const scenes = pgTable(
+  "scenes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productionId: uuid("production_id")
+      .notNull()
+      .references(() => productions.id, { onDelete: "cascade" }),
+    sceneNumber: integer("scene_number").notNull(),
+    title: varchar("title", { length: 160 }).notNull(),
+    description: text("description").notNull().default(""),
+    readiness: varchar("readiness", { length: 32 }).notNull().default("not_started"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("scenes_production_id_idx").on(table.productionId),
+    unique("scenes_production_number_unique").on(table.productionId, table.sceneNumber),
   ],
 );
 
