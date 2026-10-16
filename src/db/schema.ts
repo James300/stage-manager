@@ -136,6 +136,54 @@ export const scenes = pgTable(
   (table) => [
     index("scenes_production_id_idx").on(table.productionId),
     unique("scenes_production_number_unique").on(table.productionId, table.sceneNumber),
+    unique("scenes_id_production_unique").on(table.id, table.productionId),
+  ],
+);
+
+export type RehearsalStatus = "tentative" | "confirmed" | "completed" | "cancelled";
+
+export const rehearsals = pgTable(
+  "rehearsals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productionId: uuid("production_id")
+      .notNull()
+      .references(() => productions.id, { onDelete: "cascade" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    durationMinutes: integer("duration_minutes").notNull(),
+    timeZone: varchar("time_zone", { length: 64 }).notNull(),
+    status: varchar("status", { length: 32 }).$type<RehearsalStatus>().notNull().default("tentative"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("rehearsals_production_id_idx").on(table.productionId),
+    unique("rehearsals_id_production_unique").on(table.id, table.productionId),
+  ],
+);
+
+export const rehearsalScenes = pgTable(
+  "rehearsal_scenes",
+  {
+    rehearsalId: uuid("rehearsal_id").notNull(),
+    sceneId: uuid("scene_id").notNull(),
+    productionId: uuid("production_id")
+      .notNull()
+      .references(() => productions.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.rehearsalId, table.sceneId] }),
+    index("rehearsal_scenes_scene_id_idx").on(table.sceneId),
+    foreignKey({
+      columns: [table.rehearsalId, table.productionId],
+      foreignColumns: [rehearsals.id, rehearsals.productionId],
+      name: "rehearsal_scenes_rehearsal_production_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.sceneId, table.productionId],
+      foreignColumns: [scenes.id, scenes.productionId],
+      name: "rehearsal_scenes_scene_production_fk",
+    }).onDelete("cascade"),
   ],
 );
 

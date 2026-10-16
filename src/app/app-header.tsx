@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "@/app/sign-out-button";
 
 const navigation = [
+  { href: "/rehearsals", label: "Rehearsals" },
   { href: "/scenes", label: "Scenes" },
   { href: "/cast", label: "Cast" },
   { href: "/performers", label: "Performers" },
