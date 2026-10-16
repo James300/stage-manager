@@ -5,7 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { rehearsalScenes, rehearsals, scenes } from "@/db/schema";
+import { performers, rehearsalAttendance, rehearsalScenes, rehearsals, scenes } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
 import { getCurrentProduction } from "@/lib/production";
 
@@ -153,4 +153,61 @@ export async function updateRehearsal(
   revalidatePath("/rehearsals");
   revalidatePath(`/rehearsals/${existing.id}`);
   return { saved: true };
+}
+
+export async function setRehearsalAttendance(formData: FormData) {
+  await requireAdmin();
+  const parsed = z
+    .object({
+      rehearsalId: z.uuid(),
+      performerId: z.uuid(),
+      present: z.enum(["true", "false"]),
+    })
+    .safeParse({
+      rehearsalId: readText(formData, "rehearsalId"),
+      performerId: readText(formData, "performerId"),
+      present: formData.get("present") === "true" ? "true" : "false",
+    });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Check the attendance details and try again.");
+  }
+
+  const production = await getCurrentProduction();
+  const db = getDb();
+  const [rehearsal] = await db
+    .select({ id: rehearsals.id })
+    .from(rehearsals)
+    .where(and(eq(rehearsals.id, parsed.data.rehearsalId), eq(rehearsals.productionId, production.id)))
+    .limit(1);
+  if (!rehearsal) throw new Error("Rehearsal not found in the current production.");
+
+  const [performer] = await db
+    .select({ id: performers.id })
+    .from(performers)
+    .where(and(eq(performers.id, parsed.data.performerId), eq(performers.productionId, production.id)))
+    .limit(1);
+  if (!performer) throw new Error("Performer not found in the current production.");
+
+  if (parsed.data.present === "true") {
+    await db
+      .insert(rehearsalAttendance)
+      .values({
+        rehearsalId: rehearsal.id,
+        performerId: performer.id,
+        productionId: production.id,
+      })
+      .onConflictDoNothing();
+  } else {
+    await db
+      .delete(rehearsalAttendance)
+      .where(
+        and(
+          eq(rehearsalAttendance.rehearsalId, rehearsal.id),
+          eq(rehearsalAttendance.performerId, performer.id),
+          eq(rehearsalAttendance.productionId, production.id),
+        ),
+      );
+  }
+
+  revalidatePath(`/rehearsals/${rehearsal.id}`);
 }

@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { scenes } from "@/db/schema";
+import { characters, sceneCharacters, scenes } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
 import { getCurrentProduction } from "@/lib/production";
 
@@ -105,4 +105,62 @@ export async function updateScene(formData: FormData) {
   if (!updated) throw new Error("Scene not found in the current production.");
   revalidatePath("/scenes");
   revalidatePath(`/scenes/${parsed.id}`);
+}
+
+export async function updateSceneCharacters(formData: FormData) {
+  await requireAdmin();
+  const parsed = z
+    .object({
+      sceneId: z.uuid(),
+      characterIds: z.array(z.uuid()).refine(
+        (characterIds) => new Set(characterIds).size === characterIds.length,
+        "A character can only be selected once.",
+      ),
+    })
+    .safeParse({
+      sceneId: readText(formData, "sceneId"),
+      characterIds: formData.getAll("characterIds").filter((value): value is string => typeof value === "string"),
+    });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Check the scene character assignments and try again.");
+  }
+
+  const production = await getCurrentProduction();
+  const db = getDb();
+  const [scene] = await db
+    .select({ id: scenes.id })
+    .from(scenes)
+    .where(and(eq(scenes.id, parsed.data.sceneId), eq(scenes.productionId, production.id)))
+    .limit(1);
+  if (!scene) throw new Error("Scene not found in the current production.");
+
+  if (parsed.data.characterIds.length > 0) {
+    const matchingCharacters = await db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(and(eq(characters.productionId, production.id), inArray(characters.id, parsed.data.characterIds)));
+    if (matchingCharacters.length !== parsed.data.characterIds.length) {
+      throw new Error("Choose characters from the current production.");
+    }
+  }
+
+  await db.batch([
+    db.delete(sceneCharacters).where(
+      and(eq(sceneCharacters.sceneId, scene.id), eq(sceneCharacters.productionId, production.id)),
+    ),
+    ...(parsed.data.characterIds.length > 0
+      ? [
+          db.insert(sceneCharacters).values(
+            parsed.data.characterIds.map((characterId) => ({
+              sceneId: scene.id,
+              characterId,
+              productionId: production.id,
+            })),
+          ),
+        ]
+      : []),
+  ]);
+
+  revalidatePath(`/scenes/${scene.id}`);
+  revalidatePath("/rehearsals");
 }

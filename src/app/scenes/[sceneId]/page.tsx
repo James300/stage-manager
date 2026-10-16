@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { z } from "zod";
 import { PageLayout } from "@/app/page-layout";
-import { updateScene } from "@/app/scenes/actions";
+import { updateScene, updateSceneCharacters } from "@/app/scenes/actions";
 import { getDb } from "@/db";
-import { scenes } from "@/db/schema";
+import { characters, sceneCharacters, scenes } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
 import { getCurrentProduction } from "@/lib/production";
 
@@ -32,6 +32,20 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
     .limit(1);
 
   if (!scene) notFound();
+
+  const db = getDb();
+  const [characterList, assignedCharacters] = await Promise.all([
+    db
+      .select({ id: characters.id, name: characters.name })
+      .from(characters)
+      .where(eq(characters.productionId, production.id))
+      .orderBy(characters.name),
+    db
+      .select({ characterId: sceneCharacters.characterId })
+      .from(sceneCharacters)
+      .where(and(eq(sceneCharacters.sceneId, scene.id), eq(sceneCharacters.productionId, production.id))),
+  ]);
+  const assignedCharacterIds = new Set(assignedCharacters.map(({ characterId }) => characterId));
 
   return (
     <PageLayout
@@ -88,6 +102,43 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
         <div>
           <button className="button-primary" type="submit">
             Save scene
+          </button>
+        </div>
+      </form>
+      <form
+        action={updateSceneCharacters}
+        className="mt-6 grid gap-4 rounded-2xl border border-black/10 bg-white/80 p-6"
+      >
+        <input name="sceneId" type="hidden" value={scene.id} />
+        <div>
+          <h2 className="text-xl font-semibold">Characters in this scene</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Performers assigned to these characters will be required at rehearsals for this scene.
+          </p>
+        </div>
+        {characterList.length > 0 ? (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {characterList.map((character) => (
+              <li key={character.id}>
+                <label className="flex items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3">
+                  <input
+                    className="accent-[var(--accent)]"
+                    defaultChecked={assignedCharacterIds.has(character.id)}
+                    name="characterIds"
+                    type="checkbox"
+                    value={character.id}
+                  />
+                  <span className="font-medium">{character.name}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-[var(--muted)]">Add characters in Cast before assigning them to scenes.</p>
+        )}
+        <div>
+          <button className="button-primary" type="submit">
+            Save scene characters
           </button>
         </div>
       </form>

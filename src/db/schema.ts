@@ -187,6 +187,57 @@ export const rehearsalScenes = pgTable(
   ],
 );
 
+export const sceneCharacters = pgTable(
+  "scene_characters",
+  {
+    sceneId: uuid("scene_id").notNull(),
+    characterId: uuid("character_id").notNull(),
+    productionId: uuid("production_id")
+      .notNull()
+      .references(() => productions.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.sceneId, table.characterId] }),
+    index("scene_characters_character_id_idx").on(table.characterId),
+    foreignKey({
+      columns: [table.sceneId, table.productionId],
+      foreignColumns: [scenes.id, scenes.productionId],
+      name: "scene_characters_scene_production_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.characterId, table.productionId],
+      foreignColumns: [characters.id, characters.productionId],
+      name: "scene_characters_character_production_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const rehearsalAttendance = pgTable(
+  "rehearsal_attendance",
+  {
+    rehearsalId: uuid("rehearsal_id").notNull(),
+    performerId: uuid("performer_id").notNull(),
+    productionId: uuid("production_id")
+      .notNull()
+      .references(() => productions.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.rehearsalId, table.performerId] }),
+    index("rehearsal_attendance_performer_id_idx").on(table.performerId),
+    foreignKey({
+      columns: [table.rehearsalId, table.productionId],
+      foreignColumns: [rehearsals.id, rehearsals.productionId],
+      name: "rehearsal_attendance_rehearsal_production_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.performerId, table.productionId],
+      foreignColumns: [performers.id, performers.productionId],
+      name: "rehearsal_attendance_performer_production_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const performerCharacters = pgTable(
   "performer_characters",
   {
