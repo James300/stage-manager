@@ -1,8 +1,8 @@
 import { asc, eq } from "drizzle-orm";
 import { connection } from "next/server";
 import { CharacterCreateModal } from "@/app/cast/character-create-modal";
+import { CharacterEditModal } from "@/app/cast/character-edit-modal";
 import { PageLayout } from "@/app/page-layout";
-import { deleteCharacter, updateCharacter } from "@/app/cast/actions";
 import { getDb } from "@/db";
 import { characters, performerCharacters, performers } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
@@ -18,9 +18,15 @@ export default async function CastPage() {
     .from(characters)
     .where(eq(characters.productionId, production.id))
     .orderBy(asc(characters.name));
+  const performerList = await db
+    .select()
+    .from(performers)
+    .where(eq(performers.productionId, production.id))
+    .orderBy(asc(performers.name));
   const assignments = await db
     .select({
       characterId: performerCharacters.characterId,
+      performerId: performers.id,
       performerName: performers.name,
     })
     .from(performerCharacters)
@@ -28,10 +34,10 @@ export default async function CastPage() {
     .where(eq(performerCharacters.productionId, production.id))
     .orderBy(asc(performers.name));
 
-  const performersByCharacter = new Map<string, string[]>();
+  const performersByCharacter = new Map<string, typeof assignments>();
   for (const assignment of assignments) {
     const names = performersByCharacter.get(assignment.characterId) ?? [];
-    names.push(assignment.performerName);
+    names.push(assignment);
     performersByCharacter.set(assignment.characterId, names);
   }
 
@@ -53,51 +59,54 @@ export default async function CastPage() {
         </div>
       ) : (
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {characterList.map((character) => (
-            <li key={character.id} className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm">
-              <form action={updateCharacter} className="grid gap-3">
-                <input name="id" type="hidden" value={character.id} />
-                <label className="grid gap-1 text-sm font-medium">
-                  Character
-                  <input
-                    className="field"
-                    defaultValue={character.name}
-                    maxLength={160}
-                    name="name"
-                    required
+          {characterList.map((character) => {
+            const assignedPerformers = performersByCharacter.get(character.id) ?? [];
+            const assignedPerformerIds = new Set(
+              assignedPerformers.map((performer) => performer.performerId),
+            );
+            const availablePerformers = performerList.filter(
+              (performer) => !assignedPerformerIds.has(performer.id),
+            );
+
+            return (
+              <li
+                key={character.id}
+                className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-lg font-semibold">{character.name}</h2>
+                  <CharacterEditModal
+                    assignedPerformers={assignedPerformers.map(({ performerId, performerName }) => ({
+                      id: performerId,
+                      name: performerName,
+                    }))}
+                    availablePerformers={availablePerformers.map(({ id, name }) => ({ id, name }))}
+                    character={{ id: character.id, name: character.name }}
                   />
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  Notes
-                  <textarea
-                    className="field min-h-20"
-                    defaultValue={character.notes ?? ""}
-                    maxLength={5000}
-                    name="notes"
-                  />
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <button className="button-secondary" type="submit">
-                    Save
-                  </button>
-                  <button
-                    className="button-danger"
-                    formAction={deleteCharacter}
-                    formNoValidate
-                    type="submit"
-                  >
-                    Remove
-                  </button>
                 </div>
-              </form>
-              <div className="mt-4 border-t border-black/10 pt-3">
-                <h2 className="text-sm font-semibold">Performers</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  {performersByCharacter.get(character.id)?.join(", ") || "No performers assigned"}
-                </p>
-              </div>
-            </li>
-          ))}
+                <div className="mt-4 border-t border-black/10 pt-3">
+                  <h3 className="text-sm font-semibold">Performers</h3>
+                  {assignedPerformers.length > 0 ? (
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {assignedPerformers.map((performer) => (
+                        <li
+                          className="rounded-full border border-black/10 bg-[var(--background)] px-3 py-1 text-sm"
+                          key={performer.performerId}
+                        >
+                          {performer.performerName}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-sm text-[var(--muted)]">No performers assigned</p>
+                  )}
+                  {assignedPerformers.length === 0 && availablePerformers.length === 0 && (
+                    <p className="mt-1 text-sm text-[var(--muted)]">No performers in this production.</p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </PageLayout>

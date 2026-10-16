@@ -58,10 +58,6 @@ export function CharacterCreateModal() {
             Character name
             <input className="field" name="name" required maxLength={160} />
           </label>
-          <label className="grid gap-1 text-sm font-medium">
-            Notes
-            <textarea className="field min-h-24" name="notes" maxLength={5000} />
-          </label>
           {state.error && (
             <p className="text-sm text-red-800" role="alert">
               {state.error}

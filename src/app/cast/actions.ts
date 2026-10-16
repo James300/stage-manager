@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -9,17 +9,15 @@ import { requireAdmin } from "@/lib/admin";
 import { getCurrentProduction } from "@/lib/production";
 
 const performerSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().uuid(),
   name: z.string().trim().min(1).max(160),
   email: z.union([z.email(), z.literal("")]).optional(),
   phone: z.string().trim().max(40),
-  notes: z.string().trim().max(5000),
 });
 
 const characterSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().uuid(),
   name: z.string().trim().min(1).max(160),
-  notes: z.string().trim().max(5000),
 });
 
 const assignmentSchema = z.object({
@@ -30,29 +28,12 @@ const assignmentSchema = z.object({
 export type CreateCastItemState = {
   error?: string;
   created?: boolean;
+  saved?: boolean;
 };
 
 function readText(formData: FormData, field: string) {
   const value = formData.get(field);
   return typeof value === "string" ? value.trim() : "";
-}
-
-function readPerformer(formData: FormData) {
-  return performerSchema.parse({
-    id: readText(formData, "id") || undefined,
-    name: readText(formData, "name"),
-    email: readText(formData, "email"),
-    phone: readText(formData, "phone"),
-    notes: readText(formData, "notes"),
-  });
-}
-
-function readCharacter(formData: FormData) {
-  return characterSchema.parse({
-    id: readText(formData, "id") || undefined,
-    name: readText(formData, "name"),
-    notes: readText(formData, "notes"),
-  });
 }
 
 export async function createPerformer(
@@ -64,7 +45,6 @@ export async function createPerformer(
     name: readText(formData, "name"),
     email: readText(formData, "email"),
     phone: readText(formData, "phone"),
-    notes: readText(formData, "notes"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the performer details and try again." };
@@ -76,7 +56,6 @@ export async function createPerformer(
     name: parsed.data.name,
     email: parsed.data.email || null,
     phone: parsed.data.phone || null,
-    notes: parsed.data.notes || null,
   });
 
   revalidatePath("/performers");
@@ -84,19 +63,29 @@ export async function createPerformer(
   return { created: true };
 }
 
-export async function updatePerformer(formData: FormData) {
+export async function updatePerformer(
+  _previousState: CreateCastItemState,
+  formData: FormData,
+): Promise<CreateCastItemState> {
   await requireAdmin();
-  const input = readPerformer(formData);
-  if (!input.id) throw new Error("A performer ID is required to update a performer.");
+  const parsed = performerSchema.safeParse({
+    id: readText(formData, "id"),
+    name: readText(formData, "name"),
+    email: readText(formData, "email"),
+    phone: readText(formData, "phone"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the performer details and try again." };
+  }
   const production = await getCurrentProduction();
 
+  const input = parsed.data;
   const [updated] = await getDb()
     .update(performers)
     .set({
       name: input.name,
       email: input.email || null,
       phone: input.phone || null,
-      notes: input.notes || null,
       updatedAt: new Date(),
     })
     .where(and(eq(performers.id, input.id), eq(performers.productionId, production.id)))
@@ -105,6 +94,7 @@ export async function updatePerformer(formData: FormData) {
   if (!updated) throw new Error("Performer not found in the current production.");
   revalidatePath("/performers");
   revalidatePath("/cast");
+  return { saved: true };
 }
 
 export async function deletePerformer(formData: FormData) {
@@ -129,7 +119,6 @@ export async function createCharacter(
   await requireAdmin();
   const parsed = characterSchema.omit({ id: true }).safeParse({
     name: readText(formData, "name"),
-    notes: readText(formData, "notes"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the character details and try again." };
@@ -146,7 +135,6 @@ export async function createCharacter(
   await db.insert(characters).values({
     productionId: production.id,
     name: parsed.data.name,
-    notes: parsed.data.notes || null,
   });
 
   revalidatePath("/cast");
@@ -154,25 +142,46 @@ export async function createCharacter(
   return { created: true };
 }
 
-export async function updateCharacter(formData: FormData) {
+export async function updateCharacter(
+  _previousState: CreateCastItemState,
+  formData: FormData,
+): Promise<CreateCastItemState> {
   await requireAdmin();
-  const input = readCharacter(formData);
-  if (!input.id) throw new Error("A character ID is required to update a character.");
+  const parsed = characterSchema.safeParse({
+    id: readText(formData, "id"),
+    name: readText(formData, "name"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the character details and try again." };
+  }
   const production = await getCurrentProduction();
+  const db = getDb();
+  const [duplicate] = await db
+    .select({ id: characters.id })
+    .from(characters)
+    .where(
+      and(
+        eq(characters.productionId, production.id),
+        eq(characters.name, parsed.data.name),
+        ne(characters.id, parsed.data.id),
+      ),
+    )
+    .limit(1);
+  if (duplicate) return { error: `${parsed.data.name} already exists in the cast.` };
 
-  const [updated] = await getDb()
+  const [updated] = await db
     .update(characters)
     .set({
-      name: input.name,
-      notes: input.notes || null,
+      name: parsed.data.name,
       updatedAt: new Date(),
     })
-    .where(and(eq(characters.id, input.id), eq(characters.productionId, production.id)))
+    .where(and(eq(characters.id, parsed.data.id), eq(characters.productionId, production.id)))
     .returning({ id: characters.id });
 
   if (!updated) throw new Error("Character not found in the current production.");
   revalidatePath("/cast");
   revalidatePath("/performers");
+  return { saved: true };
 }
 
 export async function deleteCharacter(formData: FormData) {

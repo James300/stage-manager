@@ -1,12 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { connection } from "next/server";
 import { PageLayout } from "@/app/page-layout";
-import {
-  assignCharacter,
-  deletePerformer,
-  unassignCharacter,
-  updatePerformer,
-} from "@/app/cast/actions";
+import { PerformerEditModal } from "@/app/performers/performer-edit-modal";
 import { PerformerCreateModal } from "@/app/performers/performer-create-modal";
 import { getDb } from "@/db";
 import { characters, performerCharacters, performers } from "@/db/schema";
@@ -63,7 +58,7 @@ export default async function PerformersPage() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-4">
+        <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {performerList.map((performer) => {
             const assignedCharacters = charactersByPerformer.get(performer.id) ?? [];
             const assignedIds = new Set(assignedCharacters.map((character) => character.id));
@@ -72,120 +67,55 @@ export default async function PerformersPage() {
             );
 
             return (
-              <li key={performer.id} className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm">
-                <form action={updatePerformer} className="grid gap-3 sm:grid-cols-2">
-                  <input name="id" type="hidden" value={performer.id} />
-                  <label className="grid gap-1 text-sm font-medium">
-                    Performer name
-                    <input
-                      className="field"
-                      defaultValue={performer.name}
-                      maxLength={160}
-                      name="name"
-                      required
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm font-medium">
-                    Email
-                    <input
-                      className="field"
-                      defaultValue={performer.email ?? ""}
-                      maxLength={320}
-                      name="email"
-                      type="email"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm font-medium">
-                    Phone
-                    <input
-                      className="field"
-                      defaultValue={performer.phone ?? ""}
-                      maxLength={40}
-                      name="phone"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm font-medium sm:col-span-2">
-                    Notes
-                    <textarea
-                      className="field min-h-20"
-                      defaultValue={performer.notes ?? ""}
-                      maxLength={5000}
-                      name="notes"
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-2 sm:col-span-2">
-                    <button className="button-primary" type="submit">
-                      Save performer
-                    </button>
-                    <button
-                      aria-label={`Remove ${performer.name}`}
-                      className="button-danger"
-                      formAction={deletePerformer}
-                      formNoValidate
-                      type="submit"
-                    >
-                      Remove performer
-                    </button>
-                  </div>
-                </form>
-
-                <div className="mt-5 border-t border-black/10 pt-4">
-                  <h2 className="mb-3 text-sm font-semibold">Characters</h2>
+              <li
+                key={performer.id}
+                className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-lg font-semibold">{performer.name}</h2>
+                  <PerformerEditModal
+                    assignedCharacters={assignedCharacters.map(({ id, name }) => ({ id, name }))}
+                    availableCharacters={availableCharacters.map(({ id, name }) => ({ id, name }))}
+                    performer={{
+                      id: performer.id,
+                      name: performer.name,
+                      email: performer.email,
+                      phone: performer.phone,
+                    }}
+                  />
+                </div>
+                <div className="mt-4 border-t border-black/10 pt-3">
+                  <h3 className="text-sm font-semibold">Characters</h3>
                   {assignedCharacters.length > 0 ? (
-                    <ul className="mb-3 flex flex-wrap gap-2">
+                    <ul className="mt-2 flex flex-wrap gap-2">
                       {assignedCharacters.map((character) => (
-                        <li key={character.id}>
-                          <form action={unassignCharacter}>
-                            <input name="performerId" type="hidden" value={performer.id} />
-                            <input name="characterId" type="hidden" value={character.id} />
-                            <button
-                              aria-label={`Unassign ${character.name} from ${performer.name}`}
-                              className="rounded-full border border-black/10 bg-[var(--background)] px-3 py-1 text-sm hover:border-[var(--accent)]"
-                              type="submit"
-                            >
-                              {character.name} <span aria-hidden="true">×</span>
-                            </button>
-                          </form>
+                        <li
+                          className="rounded-full border border-black/10 bg-[var(--background)] px-3 py-1 text-sm"
+                          key={character.id}
+                        >
+                          {character.name}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mb-3 text-sm text-[var(--muted)]">No characters assigned.</p>
-                  )}
-
-                  {availableCharacters.length > 0 && (
-                    <form action={assignCharacter} className="flex flex-wrap gap-2">
-                      <input name="performerId" type="hidden" value={performer.id} />
-                      <label className="sr-only" htmlFor={`character-${performer.id}`}>
-                        Assign a character to {performer.name}
-                      </label>
-                      <select
-                        className="field min-w-48 flex-1"
-                        defaultValue=""
-                        id={`character-${performer.id}`}
-                        name="characterId"
-                        required
-                      >
-                        <option disabled value="">
-                          Choose a character
-                        </option>
-                        {availableCharacters.map((character) => (
-                          <option key={character.id} value={character.id}>
-                            {character.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button className="button-secondary" type="submit">
-                        Assign
-                      </button>
-                    </form>
-                  )}
-                  {characterList.length > 0 && availableCharacters.length === 0 && (
-                    <p className="text-sm text-[var(--muted)]">
-                      All characters have been assigned to this performer.
-                    </p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">No characters assigned.</p>
                   )}
                 </div>
+                <details className="mt-4 border-t border-black/10 pt-3">
+                  <summary className="cursor-pointer text-sm font-medium text-[var(--accent)]">
+                    Contact details
+                  </summary>
+                  <dl className="mt-3 grid gap-2 text-sm">
+                    <div>
+                      <dt className="font-medium">Email</dt>
+                      <dd className="text-[var(--muted)]">{performer.email || "Not provided"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Phone</dt>
+                      <dd className="text-[var(--muted)]">{performer.phone || "Not provided"}</dd>
+                    </div>
+                  </dl>
+                </details>
               </li>
             );
           })}

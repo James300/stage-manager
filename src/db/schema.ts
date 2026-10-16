@@ -109,7 +109,6 @@ export const characters = pgTable(
       .notNull()
       .references(() => productions.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 160 }).notNull(),
-    notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
