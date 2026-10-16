@@ -19,8 +19,8 @@ CREATE TABLE "rehearsals" (
 --> statement-breakpoint
 ALTER TABLE "rehearsal_scenes" ADD CONSTRAINT "rehearsal_scenes_production_id_productions_id_fk" FOREIGN KEY ("production_id") REFERENCES "public"."productions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rehearsal_scenes" ADD CONSTRAINT "rehearsal_scenes_rehearsal_production_fk" FOREIGN KEY ("rehearsal_id","production_id") REFERENCES "public"."rehearsals"("id","production_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "scenes" ADD CONSTRAINT "scenes_id_production_unique" UNIQUE("id","production_id");--> statement-breakpoint
 ALTER TABLE "rehearsal_scenes" ADD CONSTRAINT "rehearsal_scenes_scene_production_fk" FOREIGN KEY ("scene_id","production_id") REFERENCES "public"."scenes"("id","production_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rehearsals" ADD CONSTRAINT "rehearsals_production_id_productions_id_fk" FOREIGN KEY ("production_id") REFERENCES "public"."productions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "rehearsal_scenes_scene_id_idx" ON "rehearsal_scenes" USING btree ("scene_id");--> statement-breakpoint
-CREATE INDEX "rehearsals_production_id_idx" ON "rehearsals" USING btree ("production_id");--> statement-breakpoint
-ALTER TABLE "scenes" ADD CONSTRAINT "scenes_id_production_unique" UNIQUE("id","production_id");
+CREATE INDEX "rehearsals_production_id_idx" ON "rehearsals" USING btree ("production_id");
