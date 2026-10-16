@@ -72,7 +72,14 @@ export default async function PerformersPage() {
                 className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-lg font-semibold">{performer.name}</h2>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold">{performer.name}</h2>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      {assignedCharacters.length > 0
+                        ? `Playing ${assignedCharacters.map((character) => character.name).join(", ")}`
+                        : "No characters assigned yet."}
+                    </p>
+                  </div>
                   <PerformerEditModal
                     assignedCharacters={assignedCharacters.map(({ id, name }) => ({ id, name }))}
                     availableCharacters={availableCharacters.map(({ id, name }) => ({ id, name }))}
@@ -83,23 +90,6 @@ export default async function PerformersPage() {
                       phone: performer.phone,
                     }}
                   />
-                </div>
-                <div className="mt-4 border-t border-black/10 pt-3">
-                  <h3 className="text-sm font-semibold">Characters</h3>
-                  {assignedCharacters.length > 0 ? (
-                    <ul className="mt-2 flex flex-wrap gap-2">
-                      {assignedCharacters.map((character) => (
-                        <li
-                          className="rounded-full border border-black/10 bg-[var(--background)] px-3 py-1 text-sm"
-                          key={character.id}
-                        >
-                          {character.name}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-1 text-sm text-[var(--muted)]">No characters assigned.</p>
-                  )}
                 </div>
                 <details className="mt-4 border-t border-black/10 pt-3">
                   <summary className="cursor-pointer text-sm font-medium text-[var(--accent)]">

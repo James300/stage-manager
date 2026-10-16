@@ -74,7 +74,16 @@ export default async function CastPage() {
                 className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-lg font-semibold">{character.name}</h2>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold">{character.name}</h2>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      {assignedPerformers.length > 0
+                        ? `Played by ${assignedPerformers
+                            .map((performer) => performer.performerName)
+                            .join(", ")}`
+                        : "Nobody assigned to this role yet."}
+                    </p>
+                  </div>
                   <CharacterEditModal
                     assignedPerformers={assignedPerformers.map(({ performerId, performerName }) => ({
                       id: performerId,
@@ -83,26 +92,6 @@ export default async function CastPage() {
                     availablePerformers={availablePerformers.map(({ id, name }) => ({ id, name }))}
                     character={{ id: character.id, name: character.name }}
                   />
-                </div>
-                <div className="mt-4 border-t border-black/10 pt-3">
-                  <h3 className="text-sm font-semibold">Performers</h3>
-                  {assignedPerformers.length > 0 ? (
-                    <ul className="mt-2 flex flex-wrap gap-2">
-                      {assignedPerformers.map((performer) => (
-                        <li
-                          className="rounded-full border border-black/10 bg-[var(--background)] px-3 py-1 text-sm"
-                          key={performer.performerId}
-                        >
-                          {performer.performerName}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-1 text-sm text-[var(--muted)]">No performers assigned</p>
-                  )}
-                  {assignedPerformers.length === 0 && availablePerformers.length === 0 && (
-                    <p className="mt-1 text-sm text-[var(--muted)]">No performers in this production.</p>
-                  )}
                 </div>
               </li>
             );
