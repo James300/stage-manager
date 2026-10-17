@@ -6,15 +6,16 @@ import { useState } from "react";
 type RehearsalTabsProps = {
   details: ReactNode;
   attendance: ReactNode;
+  availability: ReactNode;
 };
 
-export function RehearsalTabs({ details, attendance }: RehearsalTabsProps) {
-  const [activeTab, setActiveTab] = useState<"details" | "attendance">("details");
+export function RehearsalTabs({ details, attendance, availability }: RehearsalTabsProps) {
+  const [activeTab, setActiveTab] = useState<"details" | "attendance" | "availability">("details");
 
   return (
     <div>
       <div aria-label="Rehearsal sections" className="mb-6 flex gap-2 border-b border-black/10" role="tablist">
-        {(["details", "attendance"] as const).map((tab) => (
+        {(["details", "attendance", "availability"] as const).map((tab) => (
           <button
             aria-controls={`rehearsal-${tab}-panel`}
             aria-selected={activeTab === tab}
@@ -50,6 +51,15 @@ export function RehearsalTabs({ details, attendance }: RehearsalTabsProps) {
         tabIndex={0}
       >
         {attendance}
+      </section>
+      <section
+        aria-labelledby="rehearsal-availability-tab"
+        hidden={activeTab !== "availability"}
+        id="rehearsal-availability-panel"
+        role="tabpanel"
+        tabIndex={0}
+      >
+        {availability}
       </section>
     </div>
   );

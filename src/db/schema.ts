@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   foreignKey,
   integer,
   index,
@@ -235,6 +237,40 @@ export const rehearsalAttendance = pgTable(
       foreignColumns: [performers.id, performers.productionId],
       name: "rehearsal_attendance_performer_production_fk",
     }).onDelete("cascade"),
+  ],
+);
+
+export type RehearsalAvailabilityResponse = "yes" | "no" | "maybe" | "partial";
+
+export const rehearsalAvailability = pgTable(
+  "rehearsal_availability",
+  {
+    rehearsalId: uuid("rehearsal_id").notNull(),
+    performerId: uuid("performer_id").notNull(),
+    productionId: uuid("production_id")
+      .notNull()
+      .references(() => productions.id, { onDelete: "cascade" }),
+    response: varchar("response", { length: 16 }).$type<RehearsalAvailabilityResponse>().notNull(),
+    note: text("note"),
+    respondedAt: timestamp("responded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.rehearsalId, table.performerId] }),
+    index("rehearsal_availability_performer_id_idx").on(table.performerId),
+    foreignKey({
+      columns: [table.rehearsalId, table.productionId],
+      foreignColumns: [rehearsals.id, rehearsals.productionId],
+      name: "rehearsal_availability_rehearsal_production_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.performerId, table.productionId],
+      foreignColumns: [performers.id, performers.productionId],
+      name: "rehearsal_availability_performer_production_fk",
+    }).onDelete("cascade"),
+    check(
+      "rehearsal_availability_response_check",
+      sql`${table.response} in ('yes', 'no', 'maybe', 'partial')`,
+    ),
   ],
 );
 

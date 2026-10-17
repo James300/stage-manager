@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { z } from "zod";
 import { PageLayout } from "@/app/page-layout";
 import { AttendanceList } from "@/app/rehearsals/[rehearsalId]/attendance-list";
+import { AvailabilityList } from "@/app/rehearsals/[rehearsalId]/availability-list";
 import { formatRehearsalStart } from "@/app/rehearsals/format";
 import { RehearsalEditModal } from "@/app/rehearsals/rehearsal-edit-modal";
 import { RehearsalTabs } from "@/app/rehearsals/[rehearsalId]/rehearsal-tabs";
@@ -12,6 +13,7 @@ import { getDb } from "@/db";
 import {
   performers,
   performerCharacters,
+  rehearsalAvailability,
   rehearsalAttendance,
   rehearsalScenes,
   rehearsals,
@@ -60,8 +62,21 @@ export default async function RehearsalPage({
       )
       .orderBy(scenes.sceneNumber),
     db
-      .select({ id: performers.id, name: performers.name })
+      .select({
+        id: performers.id,
+        name: performers.name,
+        response: rehearsalAvailability.response,
+        note: rehearsalAvailability.note,
+      })
       .from(performers)
+      .leftJoin(
+        rehearsalAvailability,
+        and(
+          eq(rehearsalAvailability.performerId, performers.id),
+          eq(rehearsalAvailability.rehearsalId, rehearsal.id),
+          eq(rehearsalAvailability.productionId, production.id),
+        ),
+      )
       .where(eq(performers.productionId, production.id))
       .orderBy(asc(performers.name)),
     db
@@ -134,6 +149,7 @@ export default async function RehearsalPage({
             requiredPerformers={requiredAttendance}
           />
         }
+        availability={<AvailabilityList performers={performerList} />}
         details={
           <div className="grid gap-6">
             <section className="rounded-2xl border border-black/10 bg-white/80 p-6 shadow-sm">
