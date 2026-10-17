@@ -5,6 +5,7 @@ import {
   foreignKey,
   integer,
   index,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -139,6 +140,36 @@ export const scenes = pgTable(
     index("scenes_production_id_idx").on(table.productionId),
     unique("scenes_production_number_unique").on(table.productionId, table.sceneNumber),
     unique("scenes_id_production_unique").on(table.id, table.productionId),
+  ],
+);
+
+export type ScriptBlock = {
+  id: string;
+  type: string;
+  characterId?: string;
+  text: string;
+};
+
+export const scripts = pgTable(
+  "scripts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productionId: uuid("production_id")
+      .notNull()
+      .references(() => productions.id, { onDelete: "cascade" }),
+    sceneId: uuid("scene_id").notNull(),
+    blocks: jsonb("blocks").$type<ScriptBlock[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("scripts_production_id_idx").on(table.productionId),
+    unique("scripts_scene_id_unique").on(table.sceneId),
+    foreignKey({
+      columns: [table.sceneId, table.productionId],
+      foreignColumns: [scenes.id, scenes.productionId],
+      name: "scripts_scene_production_fk",
+    }).onDelete("cascade"),
   ],
 );
 

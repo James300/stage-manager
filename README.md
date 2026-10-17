@@ -22,6 +22,6 @@ The app is available at [http://localhost:3000](http://localhost:3000).
 - `npm run db:migrate` applies migrations using the PostgreSQL driver. The build-time migration requires a PostgreSQL connection available to the Vercel build environment.
 - `npm run db:studio` opens Drizzle Studio.
 
-The scenes directory is available at `/scenes` and the cast directory at `/cast`; both require an administrator account. Only addresses listed in `ADMIN_EMAILS` can register, and new accounts must verify their email before signing in.
+The scenes directory is available at `/scenes`, the script reader at `/script`, and the cast directory at `/cast`; all require an administrator account. Only addresses listed in `ADMIN_EMAILS` can register, and new accounts must verify their email before signing in.
 
 See [system-design.md](system-design.md) for the system architecture, [todo.readme](todo.readme) for planned work, and [agents.md](agents.md) for project-specific agent rules.

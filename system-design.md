@@ -29,6 +29,7 @@ This application helps the director and stage manager plan rehearsals for a comm
 
 - Create and edit scenes with a title, description, and readiness status: Not Started, Early / Blocking, Mid / Working, or Polished / Show-Ready.
 - Associate scenes with characters and the actors assigned to those characters.
+- Read script blocks by scene, follow selected characters, show or highlight a performer's own dialogue, and navigate between their lines.
 
 ### Cast Directory and Profiles
 
@@ -87,6 +88,7 @@ All production-owned records should be scoped to a production/show identifier to
 - **CastMembers:** id, production_id, name, email, phone, and other needed profile details.
 - **Characters:** id, production_id, name; linked to assigned cast members.
 - **Scenes:** id, production_id, title, description, and readiness status.
+- **Scripts:** one row per scene, linked to its production and scene, with ordered script blocks stored as JSONB (`id`, `type`, optional `characterId`, and `text`).
 - **SceneCharacters:** junction mapping scenes to characters.
 - **RehearsalWeeks:** id, production_id, start_date, end_date, availability deadline.
 - **AvailabilityTokens:** cast_member_id, week_id, token_hash, expires_at, revoked_at, and used_at/state.

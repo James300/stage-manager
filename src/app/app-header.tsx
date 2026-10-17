@@ -8,6 +8,7 @@ import { SignOutButton } from "@/app/sign-out-button";
 
 const navigation = [
   { href: "/rehearsals", label: "Rehearsals" },
+  { href: "/script", label: "Script" },
   { href: "/scenes", label: "Scenes" },
   { href: "/cast", label: "Cast" },
   { href: "/performers", label: "Performers" },
