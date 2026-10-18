@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { z } from "zod";
 import { PageLayout } from "@/app/page-layout";
-import { updateScene, updateSceneCharacters } from "@/app/scenes/actions";
+import { SceneCharactersModal } from "@/app/scenes/scene-characters-modal";
+import { SceneEditModal } from "@/app/scenes/scene-edit-modal";
+import { SceneTabs } from "@/app/scenes/scene-tabs";
 import { getDb } from "@/db";
 import { characters, sceneCharacters, scenes } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
@@ -46,6 +48,9 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
       .where(and(eq(sceneCharacters.sceneId, scene.id), eq(sceneCharacters.productionId, production.id))),
   ]);
   const assignedCharacterIds = new Set(assignedCharacters.map(({ characterId }) => characterId));
+  const sceneCharactersList = characterList.filter((character) => assignedCharacterIds.has(character.id));
+  const readinessOption = readinessOptions.find(([value]) => value === scene.readiness);
+  if (!readinessOption) throw new Error(`Unsupported scene readiness: ${scene.readiness}`);
 
   return (
     <PageLayout
@@ -59,89 +64,78 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
       maxWidth="max-w-4xl"
       title={scene.title}
     >
-      <form action={updateScene} className="grid gap-5 rounded-2xl border border-black/10 bg-white/80 p-6">
-        <input type="hidden" name="id" value={scene.id} />
-        <h2 className="text-xl font-semibold">Scene details</h2>
-        <div className="grid gap-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
-          <label className="grid gap-1 text-sm font-medium">
-            Scene number
-            <input
-              className="field"
-              name="sceneNumber"
-              type="number"
-              min="1"
-              step="1"
-              defaultValue={scene.sceneNumber}
-              required
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            Title
-            <input className="field" name="title" defaultValue={scene.title} required maxLength={160} />
-          </label>
-        </div>
-        <label className="grid gap-1 text-sm font-medium">
-          Description
-          <textarea
-            className="field min-h-32"
-            name="description"
-            defaultValue={scene.description}
-            maxLength={5000}
-          />
-        </label>
-        <label className="grid gap-1 text-sm font-medium">
-          Readiness
-          <select className="field" name="readiness" defaultValue={scene.readiness}>
-            {readinessOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div>
-          <button className="button-primary" type="submit">
-            Save scene
-          </button>
-        </div>
-      </form>
-      <form
-        action={updateSceneCharacters}
-        className="mt-6 grid gap-4 rounded-2xl border border-black/10 bg-white/80 p-6"
-      >
-        <input name="sceneId" type="hidden" value={scene.id} />
-        <div>
-          <h2 className="text-xl font-semibold">Characters in this scene</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Performers assigned to these characters will be required at rehearsals for this scene.
-          </p>
-        </div>
-        {characterList.length > 0 ? (
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {characterList.map((character) => (
-              <li key={character.id}>
-                <label className="flex items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3">
-                  <input
-                    className="accent-[var(--accent)]"
-                    defaultChecked={assignedCharacterIds.has(character.id)}
-                    name="characterIds"
-                    type="checkbox"
-                    value={character.id}
-                  />
-                  <span className="font-medium">{character.name}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-[var(--muted)]">Add characters in Cast before assigning them to scenes.</p>
-        )}
-        <div>
-          <button className="button-primary" type="submit">
-            Save scene characters
-          </button>
-        </div>
-      </form>
+      <SceneTabs
+        blocking={
+          <section className="rounded-2xl border border-dashed border-black/20 bg-white/50 p-10 text-center">
+            <h2 className="text-xl font-semibold">Blocking</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Blocking details will be available here.</p>
+          </section>
+        }
+        details={
+          <div className="grid gap-6">
+            <section className="rounded-2xl border border-black/10 bg-white/80 p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold">Scene details</h2>
+                  <p className="mt-1 text-sm text-[var(--muted)]">Basic information and readiness.</p>
+                </div>
+                <SceneEditModal
+                  scene={{
+                    id: scene.id,
+                    sceneNumber: scene.sceneNumber,
+                    title: scene.title,
+                    description: scene.description,
+                    readiness: readinessOption[0],
+                  }}
+                />
+              </div>
+              <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm font-medium text-[var(--muted)]">Scene number</dt>
+                  <dd className="mt-1 font-semibold">{scene.sceneNumber}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-[var(--muted)]">Readiness</dt>
+                  <dd className="mt-1 font-semibold">{readinessOption[1]}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-sm font-medium text-[var(--muted)]">Description</dt>
+                  <dd className="mt-1 whitespace-pre-wrap">{scene.description || "No description yet."}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="rounded-2xl border border-black/10 bg-white/80 p-6 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold">Characters in this scene</h2>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    Performers assigned to these characters will be required at rehearsals for this scene.
+                  </p>
+                </div>
+                <SceneCharactersModal
+                  characters={characterList}
+                  sceneId={scene.id}
+                  assignedCharacterIds={Array.from(assignedCharacterIds)}
+                />
+              </div>
+              {sceneCharactersList.length > 0 ? (
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {sceneCharactersList.map((character) => (
+                    <li
+                      className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-sm font-medium"
+                      key={character.id}
+                    >
+                      {character.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-4 text-sm text-[var(--muted)]">No characters are assigned to this scene.</p>
+              )}
+            </section>
+          </div>
+        }
+      />
     </PageLayout>
   );
 }

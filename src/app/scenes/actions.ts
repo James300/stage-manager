@@ -24,6 +24,11 @@ export type CreateSceneState = {
   created?: boolean;
 };
 
+export type UpdateSceneState = {
+  error?: string;
+  saved?: boolean;
+};
+
 function readText(formData: FormData, field: string) {
   const value = formData.get(field);
   return typeof value === "string" ? value.trim() : "";
@@ -65,15 +70,22 @@ export async function createScene(
   return { created: true };
 }
 
-export async function updateScene(formData: FormData) {
+export async function updateScene(
+  _previousState: UpdateSceneState,
+  formData: FormData,
+): Promise<UpdateSceneState> {
   await requireAdmin();
-  const parsed = sceneUpdateSchema.parse({
+  const parsed = sceneUpdateSchema.safeParse({
     id: readText(formData, "id"),
     title: readText(formData, "title"),
     sceneNumber: readText(formData, "sceneNumber"),
     description: readText(formData, "description"),
     readiness: readText(formData, "readiness"),
   });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the scene details and try again." };
+  }
+
   const production = await getCurrentProduction();
   const db = getDb();
   const [duplicate] = await db
@@ -82,32 +94,36 @@ export async function updateScene(formData: FormData) {
     .where(
       and(
         eq(scenes.productionId, production.id),
-        eq(scenes.sceneNumber, parsed.sceneNumber),
-        ne(scenes.id, parsed.id),
+        eq(scenes.sceneNumber, parsed.data.sceneNumber),
+        ne(scenes.id, parsed.data.id),
       ),
     )
     .limit(1);
 
-  if (duplicate) throw new Error(`Scene ${parsed.sceneNumber} already exists.`);
+  if (duplicate) return { error: `Scene ${parsed.data.sceneNumber} already exists.` };
 
   const [updated] = await db
     .update(scenes)
     .set({
-      title: parsed.title,
-      sceneNumber: parsed.sceneNumber,
-      description: parsed.description,
-      readiness: parsed.readiness,
+      title: parsed.data.title,
+      sceneNumber: parsed.data.sceneNumber,
+      description: parsed.data.description,
+      readiness: parsed.data.readiness,
       updatedAt: new Date(),
     })
-    .where(and(eq(scenes.id, parsed.id), eq(scenes.productionId, production.id)))
+    .where(and(eq(scenes.id, parsed.data.id), eq(scenes.productionId, production.id)))
     .returning({ id: scenes.id });
 
   if (!updated) throw new Error("Scene not found in the current production.");
   revalidatePath("/scenes");
-  revalidatePath(`/scenes/${parsed.id}`);
+  revalidatePath(`/scenes/${parsed.data.id}`);
+  return { saved: true };
 }
 
-export async function updateSceneCharacters(formData: FormData) {
+export async function updateSceneCharacters(
+  _previousState: UpdateSceneState,
+  formData: FormData,
+): Promise<UpdateSceneState> {
   await requireAdmin();
   const parsed = z
     .object({
@@ -122,7 +138,9 @@ export async function updateSceneCharacters(formData: FormData) {
       characterIds: formData.getAll("characterIds").filter((value): value is string => typeof value === "string"),
     });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Check the scene character assignments and try again.");
+    return {
+      error: parsed.error.issues[0]?.message ?? "Check the scene character assignments and try again.",
+    };
   }
 
   const production = await getCurrentProduction();
@@ -163,4 +181,5 @@ export async function updateSceneCharacters(formData: FormData) {
 
   revalidatePath(`/scenes/${scene.id}`);
   revalidatePath("/rehearsals");
+  return { saved: true };
 }
