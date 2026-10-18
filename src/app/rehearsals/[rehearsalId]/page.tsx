@@ -20,7 +20,8 @@ import {
   sceneCharacters,
   scenes,
 } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin";
+import { requireUser } from "@/lib/admin";
+import { isAdminEmail } from "@/lib/auth";
 import { getCurrentProduction } from "@/lib/production";
 
 export default async function RehearsalPage({
@@ -29,7 +30,8 @@ export default async function RehearsalPage({
   params: Promise<{ rehearsalId: string }>;
 }) {
   await connection();
-  const admin = await requireAdmin();
+  const user = await requireUser();
+  const isAdmin = isAdminEmail(user.email);
   const { rehearsalId } = await params;
   const parsedId = z.uuid().safeParse(rehearsalId);
   if (!parsedId.success) notFound();
@@ -44,7 +46,7 @@ export default async function RehearsalPage({
 
   if (!rehearsal) notFound();
 
-  const [sceneList, assignedScenes, performerList, requiredPerformers, attendanceRecords] = await Promise.all([
+  const [sceneList, assignedScenes] = await Promise.all([
     db
       .select({ id: scenes.id, sceneNumber: scenes.sceneNumber, title: scenes.title })
       .from(scenes)
@@ -61,95 +63,107 @@ export default async function RehearsalPage({
         ),
       )
       .orderBy(scenes.sceneNumber),
-    db
-      .select({
-        id: performers.id,
-        name: performers.name,
-        response: rehearsalAvailability.response,
-        note: rehearsalAvailability.note,
-      })
-      .from(performers)
-      .leftJoin(
-        rehearsalAvailability,
-        and(
-          eq(rehearsalAvailability.performerId, performers.id),
-          eq(rehearsalAvailability.rehearsalId, rehearsal.id),
-          eq(rehearsalAvailability.productionId, production.id),
-        ),
-      )
-      .where(eq(performers.productionId, production.id))
-      .orderBy(asc(performers.name)),
-    db
-      .selectDistinct({ id: performers.id })
-      .from(rehearsalScenes)
-      .innerJoin(sceneCharacters, eq(rehearsalScenes.sceneId, sceneCharacters.sceneId))
-      .innerJoin(
-        performerCharacters,
-        and(
-          eq(performerCharacters.characterId, sceneCharacters.characterId),
-          eq(performerCharacters.productionId, production.id),
-        ),
-      )
-      .innerJoin(performers, eq(performerCharacters.performerId, performers.id))
-      .where(
-        and(
-          eq(rehearsalScenes.rehearsalId, rehearsal.id),
-          eq(rehearsalScenes.productionId, production.id),
-        ),
-      ),
-    db
-      .select({ performerId: rehearsalAttendance.performerId })
-      .from(rehearsalAttendance)
-      .where(
-        and(
-          eq(rehearsalAttendance.rehearsalId, rehearsal.id),
-          eq(rehearsalAttendance.productionId, production.id),
-        ),
-      ),
   ]);
-  const requiredPerformerIds = new Set(requiredPerformers.map(({ id }) => id));
-  const presentPerformerIds = new Set(attendanceRecords.map(({ performerId }) => performerId));
-  const requiredAttendance = performerList
-    .filter((performer) => requiredPerformerIds.has(performer.id))
-    .map((performer) => ({ ...performer, present: presentPerformerIds.has(performer.id) }));
-  const optionalAttendance = performerList
-    .filter((performer) => !requiredPerformerIds.has(performer.id))
-    .map((performer) => ({ ...performer, present: presentPerformerIds.has(performer.id) }));
+  let attendanceTab = null;
+  let availabilityTab = null;
+  if (isAdmin) {
+    const [performerList, requiredPerformers, attendanceRecords] = await Promise.all([
+      db
+        .select({
+          id: performers.id,
+          name: performers.name,
+          response: rehearsalAvailability.response,
+          note: rehearsalAvailability.note,
+        })
+        .from(performers)
+        .leftJoin(
+          rehearsalAvailability,
+          and(
+            eq(rehearsalAvailability.performerId, performers.id),
+            eq(rehearsalAvailability.rehearsalId, rehearsal.id),
+            eq(rehearsalAvailability.productionId, production.id),
+          ),
+        )
+        .where(eq(performers.productionId, production.id))
+        .orderBy(asc(performers.name)),
+      db
+        .selectDistinct({ id: performers.id })
+        .from(rehearsalScenes)
+        .innerJoin(sceneCharacters, eq(rehearsalScenes.sceneId, sceneCharacters.sceneId))
+        .innerJoin(
+          performerCharacters,
+          and(
+            eq(performerCharacters.characterId, sceneCharacters.characterId),
+            eq(performerCharacters.productionId, production.id),
+          ),
+        )
+        .innerJoin(performers, eq(performerCharacters.performerId, performers.id))
+        .where(
+          and(
+            eq(rehearsalScenes.rehearsalId, rehearsal.id),
+            eq(rehearsalScenes.productionId, production.id),
+          ),
+        ),
+      db
+        .select({ performerId: rehearsalAttendance.performerId })
+        .from(rehearsalAttendance)
+        .where(
+          and(
+            eq(rehearsalAttendance.rehearsalId, rehearsal.id),
+            eq(rehearsalAttendance.productionId, production.id),
+          ),
+        ),
+    ]);
+    const requiredPerformerIds = new Set(requiredPerformers.map(({ id }) => id));
+    const presentPerformerIds = new Set(attendanceRecords.map(({ performerId }) => performerId));
+    const requiredAttendance = performerList
+      .filter((performer) => requiredPerformerIds.has(performer.id))
+      .map((performer) => ({ ...performer, present: presentPerformerIds.has(performer.id) }));
+    const optionalAttendance = performerList
+      .filter((performer) => !requiredPerformerIds.has(performer.id))
+      .map((performer) => ({ ...performer, present: presentPerformerIds.has(performer.id) }));
+    attendanceTab = (
+      <AttendanceList
+        optionalPerformers={optionalAttendance}
+        rehearsalId={rehearsal.id}
+        requiredPerformers={requiredAttendance}
+      />
+    );
+    availabilityTab = <AvailabilityList performers={performerList} />;
+  }
   const start = formatRehearsalStart(rehearsal.startsAt, rehearsal.timeZone);
 
   return (
     <PageLayout
       actions={
         <>
-          <RehearsalEditModal
-            rehearsal={{
-              id: rehearsal.id,
-              startsAt: rehearsal.startsAt.toISOString(),
-              durationMinutes: rehearsal.durationMinutes,
-              status: rehearsal.status,
-              sceneIds: assignedScenes.map((scene) => scene.id),
-            }}
-            scenes={sceneList}
-          />
+          {isAdmin && (
+            <RehearsalEditModal
+              rehearsal={{
+                id: rehearsal.id,
+                startsAt: rehearsal.startsAt.toISOString(),
+                durationMinutes: rehearsal.durationMinutes,
+                status: rehearsal.status,
+                sceneIds: assignedScenes.map((scene) => scene.id),
+              }}
+              scenes={sceneList}
+            />
+          )}
           <Link className="button-secondary" href="/rehearsals">
             All rehearsals
           </Link>
         </>
       }
-      adminName={admin.name}
+      isAdmin={isAdmin}
+      userName={user.name}
       description={production.name}
       maxWidth="max-w-4xl"
       title="Rehearsal"
     >
       <RehearsalTabs
-        attendance={
-          <AttendanceList
-            optionalPerformers={optionalAttendance}
-            rehearsalId={rehearsal.id}
-            requiredPerformers={requiredAttendance}
-          />
-        }
-        availability={<AvailabilityList performers={performerList} />}
+        isAdmin={isAdmin}
+        attendance={attendanceTab}
+        availability={availabilityTab}
         details={
           <div className="grid gap-6">
             <section className="rounded-2xl border border-black/10 bg-white/80 p-6 shadow-sm">

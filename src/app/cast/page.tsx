@@ -44,7 +44,7 @@ export default async function CastPage() {
   return (
     <PageLayout
       actions={<CharacterCreateModal />}
-      adminName={admin.name}
+      userName={admin.name}
       description={`${production.name} · ${characterList.length} ${
         characterList.length === 1 ? "character" : "characters"
       }`}

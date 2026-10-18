@@ -44,7 +44,7 @@ export default async function PerformersPage() {
   return (
     <PageLayout
       actions={<PerformerCreateModal />}
-      adminName={admin.name}
+      userName={admin.name}
       description={`${production.name} · ${performerList.length} ${
         performerList.length === 1 ? "performer" : "performers"
       }`}

@@ -4,7 +4,8 @@ import { PageLayout } from "@/app/page-layout";
 import { ScriptReader } from "@/app/script/script-reader";
 import { getDb } from "@/db";
 import { characters, performerCharacters, performers, scenes, scripts } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin";
+import { requireUser } from "@/lib/admin";
+import { isAdminEmail } from "@/lib/auth";
 import { getCurrentProduction } from "@/lib/production";
 
 type ScriptPageProps = {
@@ -13,7 +14,8 @@ type ScriptPageProps = {
 
 export default async function ScriptPage({ searchParams }: ScriptPageProps) {
   await connection();
-  const admin = await requireAdmin();
+  const user = await requireUser();
+  const isAdmin = isAdminEmail(user.email);
   const production = await getCurrentProduction();
   const db = getDb();
   const [{ sceneId: requestedSceneId }, sceneList, characterList, scriptList, ownAssignments] =
@@ -40,7 +42,7 @@ export default async function ScriptPage({ searchParams }: ScriptPageProps) {
         .where(
           and(
             eq(performerCharacters.productionId, production.id),
-            sql`lower(${performers.email}) = lower(${admin.email})`,
+            sql`lower(${performers.email}) = lower(${user.email})`,
           ),
         ),
     ]);
@@ -52,7 +54,8 @@ export default async function ScriptPage({ searchParams }: ScriptPageProps) {
 
   return (
     <PageLayout
-      adminName={admin.name}
+      isAdmin={isAdmin}
+      userName={user.name}
       description={`${production.name} · Read the script by scene`}
       title="Script"
     >

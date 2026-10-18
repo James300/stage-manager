@@ -5,17 +5,19 @@ import { useState } from "react";
 
 type RehearsalTabsProps = {
   details: ReactNode;
-  attendance: ReactNode;
-  availability: ReactNode;
+  attendance?: ReactNode;
+  availability?: ReactNode;
+  isAdmin: boolean;
 };
 
-export function RehearsalTabs({ details, attendance, availability }: RehearsalTabsProps) {
+export function RehearsalTabs({ details, attendance, availability, isAdmin }: RehearsalTabsProps) {
   const [activeTab, setActiveTab] = useState<"details" | "attendance" | "availability">("details");
+  const tabs = isAdmin ? ["details", "attendance", "availability"] as const : ["details"] as const;
 
   return (
     <div>
       <div aria-label="Rehearsal sections" className="mb-6 flex gap-2 border-b border-black/10" role="tablist">
-        {(["details", "attendance", "availability"] as const).map((tab) => (
+        {tabs.map((tab) => (
           <button
             aria-controls={`rehearsal-${tab}-panel`}
             aria-selected={activeTab === tab}
@@ -43,24 +45,28 @@ export function RehearsalTabs({ details, attendance, availability }: RehearsalTa
       >
         {details}
       </section>
-      <section
-        aria-labelledby="rehearsal-attendance-tab"
-        hidden={activeTab !== "attendance"}
-        id="rehearsal-attendance-panel"
-        role="tabpanel"
-        tabIndex={0}
-      >
-        {attendance}
-      </section>
-      <section
-        aria-labelledby="rehearsal-availability-tab"
-        hidden={activeTab !== "availability"}
-        id="rehearsal-availability-panel"
-        role="tabpanel"
-        tabIndex={0}
-      >
-        {availability}
-      </section>
+      {isAdmin && (
+        <>
+          <section
+            aria-labelledby="rehearsal-attendance-tab"
+            hidden={activeTab !== "attendance"}
+            id="rehearsal-attendance-panel"
+            role="tabpanel"
+            tabIndex={0}
+          >
+            {attendance}
+          </section>
+          <section
+            aria-labelledby="rehearsal-availability-tab"
+            hidden={activeTab !== "availability"}
+            id="rehearsal-availability-panel"
+            role="tabpanel"
+            tabIndex={0}
+          >
+            {availability}
+          </section>
+        </>
+      )}
     </div>
   );
 }

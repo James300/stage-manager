@@ -5,12 +5,14 @@ import { PageLayout } from "@/app/page-layout";
 import { SceneCreateModal } from "@/app/scenes/scene-create-modal";
 import { getDb } from "@/db";
 import { scenes } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin";
+import { requireUser } from "@/lib/admin";
+import { isAdminEmail } from "@/lib/auth";
 import { getCurrentProduction } from "@/lib/production";
 
 export default async function ScenesPage() {
   await connection();
-  const admin = await requireAdmin();
+  const user = await requireUser();
+  const isAdmin = isAdminEmail(user.email);
   const production = await getCurrentProduction();
   const sceneList = await getDb()
     .select()
@@ -20,8 +22,9 @@ export default async function ScenesPage() {
 
   return (
     <PageLayout
-      actions={<SceneCreateModal />}
-      adminName={admin.name}
+      actions={isAdmin ? <SceneCreateModal /> : undefined}
+      isAdmin={isAdmin}
+      userName={user.name}
       description={`${production.name} · ${sceneList.length} ${
         sceneList.length === 1 ? "scene" : "scenes"
       }`}

@@ -27,11 +27,8 @@ export default function Home() {
           <Link className="button-secondary" href="/rehearsals">
             Open rehearsals
           </Link>
-          <Link className="button-secondary" href="/cast">
-            Open cast
-          </Link>
-          <Link className="button-secondary" href="/performers">
-            Open performers
+          <Link className="button-secondary" href="/script">
+            Read the script
           </Link>
         </div>
       </section>

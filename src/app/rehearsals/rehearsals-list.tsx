@@ -28,10 +28,12 @@ export function RehearsalsList({
   rehearsals,
   scenes,
   now,
+  editable,
 }: {
   rehearsals: RehearsalListItem[];
   scenes: SceneOption[];
   now: string;
+  editable: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const nowTimestamp = new Date(now).getTime();
@@ -81,7 +83,9 @@ export function RehearsalsList({
             </h2>
             <p className="mt-2 text-[var(--muted)]">
               {activeTab === "upcoming"
-                ? "Use the add button above to schedule a rehearsal."
+                ? editable
+                  ? "Use the add button above to schedule a rehearsal."
+                  : "Scheduled rehearsals will appear here."
                 : "Rehearsals will appear here after their scheduled start time."}
             </p>
           </div>
@@ -117,18 +121,20 @@ export function RehearsalsList({
                     {rehearsal.scenes.map((scene) => `Scene ${scene.sceneNumber}: ${scene.title}`).join(" · ")}
                   </p>
                 </Link>
-                <div className="absolute right-3 top-3">
-                  <RehearsalEditModal
-                    rehearsal={{
-                      id: rehearsal.id,
-                      startsAt: rehearsal.startsAt,
-                      durationMinutes: rehearsal.durationMinutes,
-                      status: rehearsal.status,
-                      sceneIds: rehearsal.scenes.map((scene) => scene.id),
-                    }}
-                    scenes={scenes}
-                  />
-                </div>
+                {editable && (
+                  <div className="absolute right-3 top-3">
+                    <RehearsalEditModal
+                      rehearsal={{
+                        id: rehearsal.id,
+                        startsAt: rehearsal.startsAt,
+                        durationMinutes: rehearsal.durationMinutes,
+                        status: rehearsal.status,
+                        sceneIds: rehearsal.scenes.map((scene) => scene.id),
+                      }}
+                      scenes={scenes}
+                    />
+                  </div>
+                )}
               </li>
             ))}
           </ul>

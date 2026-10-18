@@ -14,10 +14,13 @@ const navigation = [
   { href: "/performers", label: "Performers" },
 ];
 
-export function AppHeader({ adminName }: { adminName: string }) {
+export function AppHeader({ userName, isAdmin }: { userName: string; isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const pathname = usePathname();
+  const visibleNavigation = navigation.filter(
+    ({ href }) => isAdmin || href === "/rehearsals" || href === "/script" || href === "/scenes",
+  );
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -43,7 +46,7 @@ export function AppHeader({ adminName }: { adminName: string }) {
         </Link>
       </div>
       <div className="flex items-center gap-4 text-sm text-[var(--muted)]">
-        <span className="hidden sm:inline">{adminName}</span>
+        <span className="hidden sm:inline">{userName}</span>
         <SignOutButton />
       </div>
       <dialog
@@ -67,7 +70,7 @@ export function AppHeader({ adminName }: { adminName: string }) {
             </button>
           </div>
           <nav aria-label="Main navigation" className="grid gap-2">
-            {navigation.map(({ href, label }) => {
+            {visibleNavigation.map(({ href, label }) => {
               const active = pathname === href || pathname.startsWith(`${href}/`);
               return (
                 <Link
@@ -87,7 +90,7 @@ export function AppHeader({ adminName }: { adminName: string }) {
             })}
           </nav>
           <div className="mt-auto border-t border-black/10 pt-4 text-sm text-[var(--muted)]">
-            Signed in as {adminName}
+            Signed in as {userName}
           </div>
         </div>
       </dialog>

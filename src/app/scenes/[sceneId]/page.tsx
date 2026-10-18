@@ -9,7 +9,8 @@ import { SceneEditModal } from "@/app/scenes/scene-edit-modal";
 import { SceneTabs } from "@/app/scenes/scene-tabs";
 import { getDb } from "@/db";
 import { characters, sceneCharacters, scenes } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin";
+import { requireUser } from "@/lib/admin";
+import { isAdminEmail } from "@/lib/auth";
 import { getCurrentProduction } from "@/lib/production";
 
 const readinessOptions = [
@@ -21,7 +22,8 @@ const readinessOptions = [
 
 export default async function ScenePage({ params }: { params: Promise<{ sceneId: string }> }) {
   await connection();
-  const admin = await requireAdmin();
+  const user = await requireUser();
+  const isAdmin = isAdminEmail(user.email);
   const { sceneId } = await params;
   const parsedSceneId = z.uuid().safeParse(sceneId);
   if (!parsedSceneId.success) notFound();
@@ -59,7 +61,8 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
           All scenes
         </Link>
       }
-      adminName={admin.name}
+      isAdmin={isAdmin}
+      userName={user.name}
       description={`${production.name} · Scene ${scene.sceneNumber}`}
       maxWidth="max-w-4xl"
       title={scene.title}
@@ -79,15 +82,17 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
                   <h2 className="text-xl font-semibold">Scene details</h2>
                   <p className="mt-1 text-sm text-[var(--muted)]">Basic information and readiness.</p>
                 </div>
-                <SceneEditModal
-                  scene={{
-                    id: scene.id,
-                    sceneNumber: scene.sceneNumber,
-                    title: scene.title,
-                    description: scene.description,
-                    readiness: readinessOption[0],
-                  }}
-                />
+                {isAdmin && (
+                  <SceneEditModal
+                    scene={{
+                      id: scene.id,
+                      sceneNumber: scene.sceneNumber,
+                      title: scene.title,
+                      description: scene.description,
+                      readiness: readinessOption[0],
+                    }}
+                  />
+                )}
               </div>
               <dl className="mt-5 grid gap-5 sm:grid-cols-2">
                 <div>
@@ -112,11 +117,13 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
                     Performers assigned to these characters will be required at rehearsals for this scene.
                   </p>
                 </div>
-                <SceneCharactersModal
-                  characters={characterList}
-                  sceneId={scene.id}
-                  assignedCharacterIds={Array.from(assignedCharacterIds)}
-                />
+                {isAdmin && (
+                  <SceneCharactersModal
+                    characters={characterList}
+                    sceneId={scene.id}
+                    assignedCharacterIds={Array.from(assignedCharacterIds)}
+                  />
+                )}
               </div>
               {sceneCharactersList.length > 0 ? (
                 <ul className="mt-4 flex flex-wrap gap-2">

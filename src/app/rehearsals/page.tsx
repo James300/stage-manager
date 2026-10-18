@@ -6,12 +6,14 @@ import { RehearsalCreateModal } from "@/app/rehearsals/rehearsal-create-modal";
 import { RehearsalsList } from "@/app/rehearsals/rehearsals-list";
 import { getDb } from "@/db";
 import { rehearsalScenes, rehearsals, scenes } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin";
+import { requireUser } from "@/lib/admin";
+import { isAdminEmail } from "@/lib/auth";
 import { getCurrentProduction } from "@/lib/production";
 
 export default async function RehearsalsPage() {
   await connection();
-  const admin = await requireAdmin();
+  const user = await requireUser();
+  const isAdmin = isAdminEmail(user.email);
   const production = await getCurrentProduction();
   const db = getDb();
   const [rehearsalList, sceneList, assignments] = await Promise.all([
@@ -60,14 +62,20 @@ export default async function RehearsalsPage() {
 
   return (
     <PageLayout
-      actions={<RehearsalCreateModal scenes={sceneList} />}
-      adminName={admin.name}
+      actions={isAdmin ? <RehearsalCreateModal scenes={sceneList} /> : undefined}
+      isAdmin={isAdmin}
+      userName={user.name}
       description={`${production.name} · ${rehearsalList.length} ${
         rehearsalList.length === 1 ? "rehearsal" : "rehearsals"
       }`}
       title="Rehearsals"
     >
-      <RehearsalsList rehearsals={listItems} scenes={sceneList} now={new Date().toISOString()} />
+      <RehearsalsList
+        rehearsals={listItems}
+        scenes={sceneList}
+        now={new Date().toISOString()}
+        editable={isAdmin}
+      />
     </PageLayout>
   );
 }

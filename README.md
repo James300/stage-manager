@@ -7,7 +7,7 @@ Rehearsal planning for the Into the Woods community theatre production.
 Requires Node.js 20.9 or later and npm.
 
 1. Install dependencies with `npm install`.
-2. Copy `.env.example` to `.env.local` and set `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAILS` (comma-separated administrator email addresses), and the email credentials needed to verify administrator accounts.
+2. Copy `.env.example` to `.env.local` and set `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAILS` (comma-separated administrator email addresses), and the email credentials used for sign-in links and password resets.
 3. Start the development server with `npm run dev`.
 
 The app is available at [http://localhost:3000](http://localhost:3000).
@@ -22,6 +22,6 @@ The app is available at [http://localhost:3000](http://localhost:3000).
 - `npm run db:migrate` applies migrations using the PostgreSQL driver. The build-time migration requires a PostgreSQL connection available to the Vercel build environment.
 - `npm run db:studio` opens Drizzle Studio.
 
-The scenes directory is available at `/scenes`, the script reader at `/script`, and the cast directory at `/cast`; all require an administrator account. Only addresses listed in `ADMIN_EMAILS` can register, and new accounts must verify their email before signing in.
+Only addresses in `ADMIN_EMAILS` or matching an email on a performer profile can create an account. Users register through an emailed magic link, which verifies their email address; they can set a password after their first sign-in or continue using magic links. Password reset links are available from the sign-in page. Administrators can manage the cast and performers, while other users can view rehearsals, the script, and scenes.
 
 See [system-design.md](system-design.md) for the system architecture, [todo.readme](todo.readme) for planned work, and [agents.md](agents.md) for project-specific agent rules.

@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { AppHeader } from "@/app/app-header";
 
 type PageLayoutProps = {
-  adminName: string;
+  userName: string;
+  isAdmin?: boolean;
   title: string;
   description?: string;
   actions?: ReactNode;
@@ -11,7 +12,8 @@ type PageLayoutProps = {
 };
 
 export function PageLayout({
-  adminName,
+  userName,
+  isAdmin = true,
   title,
   description,
   actions,
@@ -20,7 +22,7 @@ export function PageLayout({
 }: PageLayoutProps) {
   return (
     <main className={`mx-auto min-h-screen ${maxWidth} px-5 py-8 sm:px-8`}>
-      <AppHeader adminName={adminName} />
+      <AppHeader isAdmin={isAdmin} userName={userName} />
       <section className="mb-8">
         <div className="flex items-center justify-between gap-4">
           <h1 className="min-w-0 text-3xl font-semibold sm:text-4xl">{title}</h1>
