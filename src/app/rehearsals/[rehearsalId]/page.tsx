@@ -157,7 +157,6 @@ export default async function RehearsalPage({
       isAdmin={isAdmin}
       userName={user.name}
       description={production.name}
-      maxWidth="max-w-4xl"
       title="Rehearsal"
     >
       <RehearsalTabs

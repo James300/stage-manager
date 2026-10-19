@@ -57,6 +57,13 @@
       "when": 1792250429789,
       "tag": "0007_abandoned_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792370443524,
+      "tag": "0008_eager_carmella_unuscione",
+      "breakpoints": true
     }
   ]
 }

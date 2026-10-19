@@ -1,10 +1,11 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
+import Link from "next/link";
 import { connection } from "next/server";
 import { CharacterCreateModal } from "@/app/cast/character-create-modal";
 import { CharacterEditModal } from "@/app/cast/character-edit-modal";
 import { PageLayout } from "@/app/page-layout";
 import { getDb } from "@/db";
-import { characters, performerCharacters, performers } from "@/db/schema";
+import { characters, performerCharacters, performers, sceneCharacters, scenes } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
 import { getCurrentProduction } from "@/lib/production";
 
@@ -33,12 +34,41 @@ export default async function CastPage() {
     .innerJoin(performers, eq(performerCharacters.performerId, performers.id))
     .where(eq(performerCharacters.productionId, production.id))
     .orderBy(asc(performers.name));
+  const characterScenes = await db
+    .select({
+      characterId: sceneCharacters.characterId,
+      id: scenes.id,
+      sceneNumber: scenes.sceneNumber,
+      title: scenes.title,
+    })
+    .from(sceneCharacters)
+    .innerJoin(
+      scenes,
+      and(
+        eq(sceneCharacters.sceneId, scenes.id),
+        eq(sceneCharacters.productionId, scenes.productionId),
+      ),
+    )
+    .where(
+      and(
+        eq(sceneCharacters.productionId, production.id),
+        eq(scenes.productionId, production.id),
+      ),
+    )
+    .orderBy(asc(scenes.sceneNumber));
 
   const performersByCharacter = new Map<string, typeof assignments>();
   for (const assignment of assignments) {
     const names = performersByCharacter.get(assignment.characterId) ?? [];
     names.push(assignment);
     performersByCharacter.set(assignment.characterId, names);
+  }
+
+  const scenesByCharacter = new Map<string, typeof characterScenes>();
+  for (const scene of characterScenes) {
+    const characterSceneList = scenesByCharacter.get(scene.characterId) ?? [];
+    characterSceneList.push(scene);
+    scenesByCharacter.set(scene.characterId, characterSceneList);
   }
 
   return (
@@ -61,6 +91,7 @@ export default async function CastPage() {
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {characterList.map((character) => {
             const assignedPerformers = performersByCharacter.get(character.id) ?? [];
+            const characterSceneList = scenesByCharacter.get(character.id) ?? [];
             const assignedPerformerIds = new Set(
               assignedPerformers.map((performer) => performer.performerId),
             );
@@ -93,6 +124,27 @@ export default async function CastPage() {
                     character={{ id: character.id, name: character.name }}
                   />
                 </div>
+                <details className="mt-4 border-t border-black/10 pt-3">
+                  <summary className="cursor-pointer text-sm font-medium text-[var(--accent)]">
+                    Scenes ({characterSceneList.length})
+                  </summary>
+                  {characterSceneList.length > 0 ? (
+                    <ul className="mt-3 grid gap-2 text-sm">
+                      {characterSceneList.map((scene) => (
+                        <li key={scene.id}>
+                          <Link
+                            className="text-[var(--muted)] underline decoration-black/20 underline-offset-2 hover:text-[var(--accent)]"
+                            href={`/scenes/${scene.id}`}
+                          >
+                            Scene {scene.sceneNumber}: {scene.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-[var(--muted)]">No scenes assigned yet.</p>
+                  )}
+                </details>
               </li>
             );
           })}

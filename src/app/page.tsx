@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col justify-between px-6 py-8 sm:px-10">
+    <main className="mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-5 py-8 sm:px-8">
       <header className="flex items-center justify-between border-b border-black/10 pb-5">
         <span className="text-sm font-semibold tracking-wide text-[var(--accent)]">
           INTO THE WOODS
@@ -21,14 +21,8 @@ export default function Home() {
           date for Into the Woods.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link className="button-primary" href="/scenes">
-            Open scenes
-          </Link>
-          <Link className="button-secondary" href="/rehearsals">
-            Open rehearsals
-          </Link>
-          <Link className="button-secondary" href="/script">
-            Read the script
+          <Link className="button-primary" href="/login">
+            Log in
           </Link>
         </div>
       </section>

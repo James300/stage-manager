@@ -1,0 +1,1 @@
+ALTER TABLE "scenes" ADD COLUMN "act" integer DEFAULT 1 NOT NULL;

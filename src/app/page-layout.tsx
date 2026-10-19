@@ -7,7 +7,6 @@ type PageLayoutProps = {
   title: string;
   description?: string;
   actions?: ReactNode;
-  maxWidth?: "max-w-4xl" | "max-w-7xl";
   children: ReactNode;
 };
 
@@ -17,11 +16,10 @@ export function PageLayout({
   title,
   description,
   actions,
-  maxWidth = "max-w-7xl",
   children,
 }: PageLayoutProps) {
   return (
-    <main className={`mx-auto min-h-screen ${maxWidth} px-5 py-8 sm:px-8`}>
+    <main className="mx-auto min-h-screen max-w-7xl px-5 py-8 sm:px-8">
       <AppHeader isAdmin={isAdmin} userName={userName} />
       <section className="mb-8">
         <div className="flex items-center justify-between gap-4">

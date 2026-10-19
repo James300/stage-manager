@@ -27,7 +27,7 @@ This application helps the director and stage manager plan rehearsals for a comm
 
 ### Scene Management
 
-- Create and edit scenes with a title, description, and readiness status: Not Started, Early / Blocking, Mid / Working, or Polished / Show-Ready.
+- Create and edit scenes with an act, title, description, and readiness status: Not Started, Early / Blocking, Mid / Working, or Polished / Show-Ready. Group scenes by act in the scene list.
 - Associate scenes with characters and the actors assigned to those characters.
 - Read script blocks by scene, follow selected characters, show or highlight a performer's own dialogue, and navigate between their lines.
 
@@ -87,7 +87,7 @@ All production-owned records should be scoped to a production/show identifier to
 - **Users / Admin memberships:** Better Auth identity plus production-scoped role assignments.
 - **CastMembers:** id, production_id, name, email, phone, and other needed profile details.
 - **Characters:** id, production_id, name; linked to assigned cast members.
-- **Scenes:** id, production_id, title, description, and readiness status.
+- **Scenes:** id, production_id, scene number, act, title, description, and readiness status.
 - **Scripts:** one row per scene, linked to its production and scene, with ordered script blocks stored as JSONB (`id`, `type`, optional `characterId`, and `text`).
 - **SceneCharacters:** junction mapping scenes to characters.
 - **RehearsalWeeks:** id, production_id, start_date, end_date, availability deadline.

@@ -18,7 +18,11 @@ export default async function ScenesPage() {
     .select()
     .from(scenes)
     .where(eq(scenes.productionId, production.id))
-    .orderBy(asc(scenes.sceneNumber));
+    .orderBy(asc(scenes.act), asc(scenes.sceneNumber));
+  const scenesByAct = [1, 2].map((act) => ({
+    act,
+    scenes: sceneList.filter((scene) => scene.act === act),
+  }));
 
   return (
     <PageLayout
@@ -38,27 +42,38 @@ export default async function ScenesPage() {
           </p>
         </div>
       ) : (
-        <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {sceneList.map((scene) => (
-            <li key={scene.id}>
-              <Link
-                className="block h-full rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-md"
-                href={`/scenes/${scene.id}`}
-              >
-                <p className="text-sm font-semibold uppercase tracking-wide text-[var(--accent)]">
-                  Scene {scene.sceneNumber}
-                </p>
-                <h2 className="mt-2 text-xl font-semibold">{scene.title}</h2>
-                <p className="mt-3 line-clamp-3 min-h-6 text-sm leading-6 text-[var(--muted)]">
-                  {scene.description || "No description yet."}
-                </p>
-                <p className="mt-5 text-xs font-medium text-[var(--muted)]">
-                  {scene.readiness === "not_started" ? "Not started" : "Readiness updated"}
-                </p>
-              </Link>
-            </li>
+        <div className="grid gap-8">
+          {scenesByAct.map(({ act, scenes: actScenes }) => (
+            <section aria-labelledby={`act-${act}-heading`} className="grid gap-4" key={act}>
+              <h2 className="text-2xl font-semibold" id={`act-${act}-heading`}>Act {act === 1 ? "I" : "II"}</h2>
+              {actScenes.length > 0 ? (
+                <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {actScenes.map((scene) => (
+                    <li key={scene.id}>
+                      <Link
+                        className="block h-full rounded-2xl border border-black/10 bg-white/80 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:shadow-md"
+                        href={`/scenes/${scene.id}`}
+                      >
+                        <p className="text-sm font-semibold uppercase tracking-wide text-[var(--accent)]">
+                          Scene {scene.sceneNumber}
+                        </p>
+                        <h3 className="mt-2 text-xl font-semibold">{scene.title}</h3>
+                        <p className="mt-3 line-clamp-3 min-h-6 text-sm leading-6 text-[var(--muted)]">
+                          {scene.description || "No description yet."}
+                        </p>
+                        <p className="mt-5 text-xs font-medium text-[var(--muted)]">
+                          {scene.readiness === "not_started" ? "Not started" : "Readiness updated"}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-[var(--muted)]">No scenes assigned to this act yet.</p>
+              )}
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </PageLayout>
   );

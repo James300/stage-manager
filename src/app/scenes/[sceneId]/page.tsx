@@ -64,7 +64,6 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
       isAdmin={isAdmin}
       userName={user.name}
       description={`${production.name} · Scene ${scene.sceneNumber}`}
-      maxWidth="max-w-4xl"
       title={scene.title}
     >
       <SceneTabs
@@ -87,6 +86,7 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
                     scene={{
                       id: scene.id,
                       sceneNumber: scene.sceneNumber,
+                      act: scene.act,
                       title: scene.title,
                       description: scene.description,
                       readiness: readinessOption[0],
@@ -98,6 +98,10 @@ export default async function ScenePage({ params }: { params: Promise<{ sceneId:
                 <div>
                   <dt className="text-sm font-medium text-[var(--muted)]">Scene number</dt>
                   <dd className="mt-1 font-semibold">{scene.sceneNumber}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-[var(--muted)]">Act</dt>
+                  <dd className="mt-1 font-semibold">{scene.act === 1 ? "Act I" : "Act II"}</dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-[var(--muted)]">Readiness</dt>

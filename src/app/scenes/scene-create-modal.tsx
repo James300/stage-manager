@@ -63,6 +63,13 @@ export function SceneCreateModal() {
             <input className="field" name="sceneNumber" type="number" min="1" step="1" required />
           </label>
           <label className="grid gap-1 text-sm font-medium">
+            Act
+            <select className="field" defaultValue="1" name="act">
+              <option value="1">Act I</option>
+              <option value="2">Act II</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-medium">
             Title
             <input className="field" name="title" required maxLength={160} />
           </label>

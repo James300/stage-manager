@@ -130,6 +130,7 @@ export const scenes = pgTable(
       .notNull()
       .references(() => productions.id, { onDelete: "cascade" }),
     sceneNumber: integer("scene_number").notNull(),
+    act: integer("act").notNull().default(1),
     title: varchar("title", { length: 160 }).notNull(),
     description: text("description").notNull().default(""),
     readiness: varchar("readiness", { length: 32 }).notNull().default("not_started"),

@@ -8,17 +8,19 @@ export default async function SetupPasswordPage() {
   const user = await requireUser();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
-      <Link className="mb-6 text-center text-sm font-semibold tracking-wide text-[var(--accent)]" href="/">
-        INTO THE WOODS
-      </Link>
-      <section className="rounded-2xl border border-black/10 bg-white/80 p-6 shadow-sm">
-        <h1 className="mb-2 text-2xl font-semibold">Create a password</h1>
-        <p className="mb-6 text-sm leading-6 text-[var(--muted)]">
-          Welcome, {user.name}. Set a password to sign in without a magic link next time.
-        </p>
-        <SetupPasswordForm />
-      </section>
+    <main className="mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-5 py-10 sm:px-8">
+      <div className="mx-auto w-full max-w-md">
+        <Link className="mb-6 block text-center text-sm font-semibold tracking-wide text-[var(--accent)]" href="/">
+          INTO THE WOODS
+        </Link>
+        <section className="rounded-2xl border border-black/10 bg-white/80 p-6 shadow-sm">
+          <h1 className="mb-2 text-2xl font-semibold">Create a password</h1>
+          <p className="mb-6 text-sm leading-6 text-[var(--muted)]">
+            Welcome, {user.name}. Set a password to sign in without a magic link next time.
+          </p>
+          <SetupPasswordForm />
+        </section>
+      </div>
     </main>
   );
 }

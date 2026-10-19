@@ -11,6 +11,7 @@ import { getCurrentProduction } from "@/lib/production";
 const sceneSchema = z.object({
   title: z.string().trim().min(1, "Enter a scene title.").max(160),
   sceneNumber: z.coerce.number().int().positive("Enter a positive scene number."),
+  act: z.coerce.number().int().min(1, "Choose an act.").max(2, "Choose a valid act."),
   description: z.string().trim().max(5000),
 });
 
@@ -42,6 +43,7 @@ export async function createScene(
   const parsed = sceneSchema.safeParse({
     title: readText(formData, "title"),
     sceneNumber: readText(formData, "sceneNumber"),
+    act: readText(formData, "act"),
     description: readText(formData, "description"),
   });
 
@@ -62,6 +64,7 @@ export async function createScene(
   await db.insert(scenes).values({
     productionId: production.id,
     sceneNumber: parsed.data.sceneNumber,
+    act: parsed.data.act,
     title: parsed.data.title,
     description: parsed.data.description,
   });
@@ -79,6 +82,7 @@ export async function updateScene(
     id: readText(formData, "id"),
     title: readText(formData, "title"),
     sceneNumber: readText(formData, "sceneNumber"),
+    act: readText(formData, "act"),
     description: readText(formData, "description"),
     readiness: readText(formData, "readiness"),
   });
@@ -107,6 +111,7 @@ export async function updateScene(
     .set({
       title: parsed.data.title,
       sceneNumber: parsed.data.sceneNumber,
+      act: parsed.data.act,
       description: parsed.data.description,
       readiness: parsed.data.readiness,
       updatedAt: new Date(),

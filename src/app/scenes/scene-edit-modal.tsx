@@ -11,6 +11,7 @@ type SceneEditModalProps = {
   scene: {
     id: string;
     sceneNumber: number;
+    act: number;
     title: string;
     description: string;
     readiness: Readiness;
@@ -82,6 +83,13 @@ export function SceneEditModal({ scene }: SceneEditModalProps) {
                 step="1"
                 type="number"
               />
+            </label>
+            <label className="grid gap-1 text-sm font-medium">
+              Act
+              <select className="field" defaultValue={scene.act} name="act">
+                <option value="1">Act I</option>
+                <option value="2">Act II</option>
+              </select>
             </label>
             <label className="grid gap-1 text-sm font-medium">
               Title
