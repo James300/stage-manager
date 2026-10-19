@@ -1,12 +1,12 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { performers, rehearsalAttendance, rehearsalScenes, rehearsals, scenes } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin";
+import { performers, rehearsalAttendance, rehearsalAvailability, rehearsalScenes, rehearsals, scenes } from "@/db/schema";
+import { requireAdmin, requireUser } from "@/lib/admin";
 import { getCurrentProduction } from "@/lib/production";
 
 const timeZoneSchema = z.string().min(1).max(64).refine((timeZone) => {
@@ -208,6 +208,59 @@ export async function setRehearsalAttendance(formData: FormData) {
         ),
       );
   }
+
+  revalidatePath(`/rehearsals/${rehearsal.id}`);
+}
+
+export async function setOwnRehearsalAvailability(formData: FormData) {
+  const user = await requireUser();
+  const parsed = z
+    .object({
+      rehearsalId: z.uuid(),
+      response: z.enum(["yes", "no", "maybe", "partial"]),
+    })
+    .safeParse({
+      rehearsalId: readText(formData, "rehearsalId"),
+      response: readText(formData, "response"),
+    });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Choose an attendance response.");
+  }
+
+  const production = await getCurrentProduction();
+  const db = getDb();
+  const [rehearsal] = await db
+    .select({ id: rehearsals.id })
+    .from(rehearsals)
+    .where(and(eq(rehearsals.id, parsed.data.rehearsalId), eq(rehearsals.productionId, production.id)))
+    .limit(1);
+  if (!rehearsal) throw new Error("Rehearsal not found in the current production.");
+
+  const [performer] = await db
+    .select({ id: performers.id })
+    .from(performers)
+    .where(
+      and(
+        eq(performers.productionId, production.id),
+        sql`lower(${performers.email}) = ${user.email.trim().toLowerCase()}`,
+      ),
+    )
+    .limit(1);
+  if (!performer) throw new Error("No cast profile is linked to your account.");
+
+  await db
+    .insert(rehearsalAvailability)
+    .values({
+      rehearsalId: rehearsal.id,
+      performerId: performer.id,
+      productionId: production.id,
+      response: parsed.data.response,
+      respondedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [rehearsalAvailability.rehearsalId, rehearsalAvailability.performerId],
+      set: { response: parsed.data.response, respondedAt: new Date() },
+    });
 
   revalidatePath(`/rehearsals/${rehearsal.id}`);
 }
