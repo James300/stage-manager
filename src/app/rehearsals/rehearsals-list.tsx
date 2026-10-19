@@ -10,12 +10,24 @@ type SceneOption = { id: string; sceneNumber: number; title: string };
 type RehearsalListItem = {
   id: string;
   startsAt: string;
+  timeZone: string;
   dateLabel: string;
   timeLabel: string;
   durationMinutes: number;
   status: RehearsalStatus;
   scenes: SceneOption[];
 };
+
+function localDateKey(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone,
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
 
 const statusLabels: Record<RehearsalStatus, string> = {
   tentative: "Tentative",
@@ -37,9 +49,17 @@ export function RehearsalsList({
 }) {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const nowTimestamp = new Date(now).getTime();
-  const upcoming = rehearsals.filter((rehearsal) => new Date(rehearsal.startsAt).getTime() >= nowTimestamp);
+  const upcoming = rehearsals.filter(
+    (rehearsal) =>
+      localDateKey(new Date(rehearsal.startsAt), rehearsal.timeZone) >=
+      localDateKey(new Date(nowTimestamp), rehearsal.timeZone),
+  );
   const past = rehearsals
-    .filter((rehearsal) => new Date(rehearsal.startsAt).getTime() < nowTimestamp)
+    .filter(
+      (rehearsal) =>
+        localDateKey(new Date(rehearsal.startsAt), rehearsal.timeZone) <
+        localDateKey(new Date(nowTimestamp), rehearsal.timeZone),
+    )
     .reverse();
   const visibleRehearsals = activeTab === "upcoming" ? upcoming : past;
 
@@ -86,7 +106,7 @@ export function RehearsalsList({
                 ? editable
                   ? "Use the add button above to schedule a rehearsal."
                   : "Scheduled rehearsals will appear here."
-                : "Rehearsals will appear here after their scheduled start time."}
+                : "Rehearsals will appear here after their scheduled day ends."}
             </p>
           </div>
         ) : (

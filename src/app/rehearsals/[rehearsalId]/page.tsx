@@ -122,6 +122,8 @@ export default async function RehearsalPage({
     const optionalAttendance = performerList
       .filter((performer) => !requiredPerformerIds.has(performer.id))
       .map((performer) => ({ ...performer, present: presentPerformerIds.has(performer.id) }));
+    const requiredAvailability = performerList.filter((performer) => requiredPerformerIds.has(performer.id));
+    const optionalAvailability = performerList.filter((performer) => !requiredPerformerIds.has(performer.id));
     attendanceTab = (
       <AttendanceList
         optionalPerformers={optionalAttendance}
@@ -129,7 +131,12 @@ export default async function RehearsalPage({
         requiredPerformers={requiredAttendance}
       />
     );
-    availabilityTab = <AvailabilityList performers={performerList} />;
+    availabilityTab = (
+      <AvailabilityList
+        optionalPerformers={optionalAvailability}
+        requiredPerformers={requiredAvailability}
+      />
+    );
   }
   const start = formatRehearsalStart(rehearsal.startsAt, rehearsal.timeZone);
 

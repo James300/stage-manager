@@ -52,6 +52,7 @@ export default async function RehearsalsPage() {
     return {
       id: rehearsal.id,
       startsAt: rehearsal.startsAt.toISOString(),
+      timeZone: rehearsal.timeZone,
       dateLabel: start.date,
       timeLabel: start.time,
       durationMinutes: rehearsal.durationMinutes,
