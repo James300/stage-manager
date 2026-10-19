@@ -1,10 +1,11 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { connection } from "next/server";
+import Link from "next/link";
 import { PageLayout } from "@/app/page-layout";
 import { PerformerEditModal } from "@/app/performers/performer-edit-modal";
 import { PerformerCreateModal } from "@/app/performers/performer-create-modal";
 import { getDb } from "@/db";
-import { characters, performerCharacters, performers } from "@/db/schema";
+import { characters, performerCharacters, performers, sceneCharacters, scenes } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
 import { getCurrentProduction } from "@/lib/production";
 
@@ -33,12 +34,51 @@ export default async function PerformersPage() {
     .innerJoin(characters, eq(performerCharacters.characterId, characters.id))
     .where(eq(performerCharacters.productionId, production.id))
     .orderBy(asc(characters.name));
+  const performerScenes = await db
+    .select({
+      performerId: performerCharacters.performerId,
+      id: scenes.id,
+      sceneNumber: scenes.sceneNumber,
+      title: scenes.title,
+    })
+    .from(performerCharacters)
+    .innerJoin(
+      sceneCharacters,
+      and(
+        eq(performerCharacters.characterId, sceneCharacters.characterId),
+        eq(performerCharacters.productionId, sceneCharacters.productionId),
+      ),
+    )
+    .innerJoin(
+      scenes,
+      and(
+        eq(sceneCharacters.sceneId, scenes.id),
+        eq(sceneCharacters.productionId, scenes.productionId),
+      ),
+    )
+    .where(
+      and(
+        eq(performerCharacters.productionId, production.id),
+        eq(sceneCharacters.productionId, production.id),
+        eq(scenes.productionId, production.id),
+      ),
+    )
+    .orderBy(asc(scenes.sceneNumber));
 
   const charactersByPerformer = new Map<string, typeof assignments>();
   for (const assignment of assignments) {
     const assigned = charactersByPerformer.get(assignment.performerId) ?? [];
     assigned.push(assignment);
     charactersByPerformer.set(assignment.performerId, assigned);
+  }
+
+  const scenesByPerformer = new Map<string, typeof performerScenes>();
+  for (const scene of performerScenes) {
+    const performerSceneList = scenesByPerformer.get(scene.performerId) ?? [];
+    if (!performerSceneList.some((existingScene) => existingScene.id === scene.id)) {
+      performerSceneList.push(scene);
+      scenesByPerformer.set(scene.performerId, performerSceneList);
+    }
   }
 
   return (
@@ -61,6 +101,7 @@ export default async function PerformersPage() {
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {performerList.map((performer) => {
             const assignedCharacters = charactersByPerformer.get(performer.id) ?? [];
+            const performerSceneList = scenesByPerformer.get(performer.id) ?? [];
             const assignedIds = new Set(assignedCharacters.map((character) => character.id));
             const availableCharacters = characterList.filter(
               (character) => !assignedIds.has(character.id),
@@ -91,6 +132,27 @@ export default async function PerformersPage() {
                     }}
                   />
                 </div>
+                <details className="mt-4 border-t border-black/10 pt-3">
+                  <summary className="cursor-pointer text-sm font-medium text-[var(--accent)]">
+                    Scenes ({performerSceneList.length})
+                  </summary>
+                  {performerSceneList.length > 0 ? (
+                    <ul className="mt-3 grid gap-2 text-sm">
+                      {performerSceneList.map((scene) => (
+                        <li key={scene.id}>
+                          <Link
+                            className="text-[var(--muted)] underline decoration-black/20 underline-offset-2 hover:text-[var(--accent)]"
+                            href={`/scenes/${scene.id}`}
+                          >
+                            Scene {scene.sceneNumber}: {scene.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-[var(--muted)]">No scenes assigned yet.</p>
+                  )}
+                </details>
                 <details className="mt-4 border-t border-black/10 pt-3">
                   <summary className="cursor-pointer text-sm font-medium text-[var(--accent)]">
                     Contact details
