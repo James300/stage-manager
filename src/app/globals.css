@@ -80,6 +80,12 @@ body {
   border-color: var(--accent);
 }
 
+.script-practice-toggle--active,
+.script-practice-toggle--active:hover {
+  border-color: var(--accent);
+  background: #edf4ed;
+}
+
 .button-danger {
   border: 1px solid rgb(153 27 27 / 25%);
   background: white;
@@ -127,6 +133,44 @@ body {
 
 .modal-dialog::backdrop {
   background: rgb(0 0 0 / 40%);
+}
+
+.script-line-card--jump {
+  isolation: isolate;
+  position: relative;
+}
+
+.script-line-card--jump::after {
+  animation: script-line-jump-fade 2s ease-out forwards;
+  background: #d3e0d5;
+  border: 3px solid #365c48;
+  border-radius: inherit;
+  box-shadow: 0 2px 8px rgb(34 37 31 / 14%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.script-line-card--jump > span {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes script-line-jump-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .script-line-card--jump {
+    animation-duration: 1ms;
+  }
 }
 
 .sidebar-dialog {

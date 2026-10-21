@@ -1,7 +1,15 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown, ChevronUp, Filter, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type SyntheticEvent,
+} from "react";
 import type { ScriptBlock } from "@/db/schema";
 
 type ScriptScene = {
@@ -12,6 +20,10 @@ type ScriptScene = {
 };
 
 type Character = { id: string; name: string };
+type KeyedBlock = { key: string; block: ScriptBlock };
+type ScriptSection = { id: string; title: string; blocks: KeyedBlock[] };
+type ScriptRow = { key: string; lines: KeyedBlock[] };
+type JumpTarget = { key: string; sectionId: string; rowIndex: number };
 
 type ScriptReaderProps = {
   scenes: ScriptScene[];
@@ -24,13 +36,210 @@ type FilterSettings = {
   characterIds: string[];
   meOnly: boolean;
   highlightMyLines: boolean;
+  practiceMode: boolean;
+};
+
+type SectionCardProps = {
+  section: ScriptSection;
+  rows: ScriptRow[];
+  isOpen: boolean;
+  charactersById: Map<string, string>;
+  ownCharacterIds: Set<string>;
+  highlightMyLines: boolean;
+  practiceMode: boolean;
+  clickedLineKey: string | null;
+  jumpFlash: { lineKey: string; id: number } | null;
+  jumpTarget: JumpTarget | null;
+  onToggle: (sectionId: string, isOpen: boolean) => void;
+  onJumpComplete: (lineKey: string) => void;
+  onSelectLine: (line: KeyedBlock) => void;
 };
 
 const emptyFilters: FilterSettings = {
   characterIds: [],
   meOnly: false,
-  highlightMyLines: false,
+  highlightMyLines: true,
+  practiceMode: false,
 };
+
+function characterIdsFor(block: ScriptBlock) {
+  return [...new Set([...(block.characterIds ?? []), ...(block.characterId ? [block.characterId] : [])])];
+}
+
+function sectionsFor(blocks: ScriptBlock[]): ScriptSection[] {
+  const sections = new Map<string, ScriptSection>();
+
+  blocks.forEach((block, index) => {
+    const id = block.sectionId ?? "section-1";
+    const section = sections.get(id) ?? {
+      id,
+      title: block.sectionTitle ?? `Section ${sections.size + 1}`,
+      blocks: [],
+    };
+    section.blocks.push({ key: `${id}:${block.id}:${index}`, block });
+    sections.set(id, section);
+  });
+
+  return [...sections.values()];
+}
+
+function rowsFor(blocks: KeyedBlock[]): ScriptRow[] {
+  const rows: ScriptRow[] = [];
+
+  for (let index = 0; index < blocks.length; ) {
+    const current = blocks[index];
+    const groupId = current.block.concurrentGroupId;
+    if (!groupId) {
+      rows.push({ key: current.key, lines: [current] });
+      index += 1;
+      continue;
+    }
+
+    const lines: KeyedBlock[] = [];
+    while (index < blocks.length && blocks[index].block.concurrentGroupId === groupId) {
+      lines.push(blocks[index]);
+      index += 1;
+    }
+    rows.push({ key: `concurrent:${groupId}`, lines });
+  }
+
+  return rows;
+}
+
+function SectionCard({
+  section,
+  rows,
+  isOpen,
+  charactersById,
+  ownCharacterIds,
+  highlightMyLines,
+  practiceMode,
+  clickedLineKey,
+  jumpFlash,
+  jumpTarget,
+  onToggle,
+  onJumpComplete,
+  onSelectLine,
+}: SectionCardProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 144,
+    getItemKey: (index) => rows[index]?.key ?? index,
+    overscan: 5,
+    useFlushSync: false,
+  });
+
+  useEffect(() => {
+    if (isOpen && jumpTarget?.sectionId === section.id) {
+      virtualizer.scrollToIndex(jumpTarget.rowIndex, { align: "center", behavior: "smooth" });
+      onJumpComplete(jumpTarget.key);
+    }
+  }, [isOpen, jumpTarget, onJumpComplete, section.id, virtualizer]);
+
+  function handleToggle(event: SyntheticEvent<HTMLDetailsElement>) {
+    onToggle(section.id, event.currentTarget.open);
+  }
+
+  return (
+    <details
+      className="overflow-hidden rounded-2xl border border-black/10 bg-white/65 shadow-sm"
+      onToggle={handleToggle}
+      open={isOpen}
+    >
+      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 bg-white/60 px-5 py-4 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--accent)]">
+        <span className="flex items-center gap-3">
+          <ChevronDown aria-hidden="true" className="text-[var(--accent)]" size={19} />
+          <span className="font-semibold">{section.title}</span>
+          <span className="text-sm text-[var(--muted)]">{rows.length} lines</span>
+        </span>
+        <span className="rounded-full border border-black/10 px-3 py-1 text-xs text-[var(--muted)]">
+          Audio clip can be added later
+        </span>
+      </summary>
+
+      {isOpen && (
+        <div
+          aria-label={`Scrollable lines in ${section.title}`}
+          className="h-[60vh] min-h-72 max-h-[38rem] overflow-y-auto overscroll-contain border-t border-black/10 px-3 py-3 sm:px-5"
+          ref={scrollRef}
+          tabIndex={0}
+        >
+          <ol
+            aria-label={`Lines in ${section.title}`}
+            className="relative w-full"
+            style={{ height: `${virtualizer.getTotalSize()}px` }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              return (
+                <li
+                  className="absolute left-0 top-0 w-full pb-3"
+                  data-index={virtualRow.index}
+                  key={virtualRow.key}
+                  ref={virtualizer.measureElement}
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                >
+                  <div className={row.lines.length > 1 ? "grid gap-3 md:grid-cols-2" : "grid gap-3"}>
+                    {row.lines.length > 1 && (
+                      <p className="col-span-full px-1 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+                        Spoken at the same time
+                      </p>
+                    )}
+                    {row.lines.map((line) => {
+                      const speakerIds = characterIdsFor(line.block);
+                      const isOwnLine = speakerIds.some((id) => ownCharacterIds.has(id));
+                      const isClicked = clickedLineKey === line.key;
+                      const isJumpFlash = jumpFlash?.lineKey === line.key;
+                      const isOwnLineHighlighted = highlightMyLines && isOwnLine;
+                      const isHiddenForPractice = practiceMode && isOwnLine && !isClicked;
+                      const speakerNames = speakerIds.map((id) => charactersById.get(id) ?? "Unknown character");
+                      const highlightClass = isClicked
+                        ? "border-blue-500 bg-blue-100 shadow-sm"
+                        : isOwnLineHighlighted
+                          ? "border-[var(--accent)] bg-[#edf4ed] shadow-sm"
+                          : "border-transparent bg-transparent hover:border-black/10 hover:bg-white/75";
+
+                      return (
+                        <div className="min-w-0" key={line.key}>
+                          <button
+                            aria-pressed={isClicked}
+                            className={`block w-full cursor-pointer rounded-xl border px-4 py-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${highlightClass} ${
+                              isJumpFlash && !isClicked ? "script-line-card--jump" : ""
+                            }`}
+                            key={isJumpFlash ? `${line.key}:${jumpFlash.id}` : line.key}
+                            onClick={() => onSelectLine(line)}
+                            type="button"
+                          >
+                            {speakerNames.length > 0 && (
+                              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-[var(--accent)]">
+                                {speakerNames.join(" + ")}
+                              </span>
+                            )}
+                            <span
+                              className={`block whitespace-pre-wrap text-base leading-7 ${
+                                isHiddenForPractice || line.block.type === "direction"
+                                  ? "italic text-[var(--muted)]"
+                                  : ""
+                              }`}
+                            >
+                              {isHiddenForPractice ? "Click to reveal your line" : line.block.text}
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+    </details>
+  );
+}
 
 export function ScriptReader({
   scenes,
@@ -42,39 +251,66 @@ export function ScriptReader({
   const [filters, setFilters] = useState(emptyFilters);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [activeOwnLine, setActiveOwnLine] = useState<number | null>(null);
+  const [clickedLineKey, setClickedLineKey] = useState<string | null>(null);
+  const [jumpFlash, setJumpFlash] = useState<{ lineKey: string; id: number } | null>(null);
+  const [activeOwnLineKey, setActiveOwnLineKey] = useState<string | null>(null);
+  const [jumpTarget, setJumpTarget] = useState<JumpTarget | null>(null);
+  const [sectionOpenState, setSectionOpenState] = useState<{
+    sceneId: string;
+    ids: Set<string>;
+  } | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const jumpFlashSequence = useRef(0);
   const ownCharacterSet = useMemo(() => new Set(ownCharacterIds), [ownCharacterIds]);
+  const canIdentifyOwnLines = ownCharacterIds.length > 0;
   const currentScene = scenes.find((scene) => scene.id === sceneId);
-  const characterNames = useMemo(
+  const charactersById = useMemo(
     () => new Map(characters.map((character) => [character.id, character.name])),
     [characters],
   );
 
-  const visibleBlocks = useMemo(
+  const sections = useMemo(() => {
+    const sectionList = sectionsFor(currentScene?.blocks ?? []);
+    return sectionList
+      .map((section) => {
+        const filtered = section.blocks.filter(({ block }) => {
+          const speakerIds = characterIdsFor(block);
+          if (filters.meOnly && !speakerIds.some((id) => ownCharacterSet.has(id))) return false;
+          if (
+            filters.characterIds.length > 0 &&
+            speakerIds.length > 0 &&
+            !speakerIds.some((id) => filters.characterIds.includes(id))
+          ) {
+            return false;
+          }
+          return true;
+        });
+        return { section, rows: rowsFor(filtered) };
+      })
+      .filter(({ rows }) => rows.length > 0);
+  }, [currentScene, filters, ownCharacterSet]);
+
+  const ownLineTargets = useMemo(
     () =>
-      (currentScene?.blocks ?? []).filter((block) => {
-        if (filters.meOnly && (!block.characterId || !ownCharacterSet.has(block.characterId))) {
-          return false;
-        }
-        if (
-          filters.characterIds.length > 0 &&
-          block.characterId &&
-          !filters.characterIds.includes(block.characterId)
-        ) {
-          return false;
-        }
-        return true;
-      }),
-    [currentScene, filters, ownCharacterSet],
-  );
-  const ownLineIndexes = useMemo(
-    () =>
-      visibleBlocks.flatMap((block, index) =>
-        block.characterId && ownCharacterSet.has(block.characterId) ? [index] : [],
+      sections.flatMap(({ section, rows }) =>
+        rows.flatMap((row, rowIndex) =>
+          row.lines
+            .filter(({ block }) => characterIdsFor(block).some((id) => ownCharacterSet.has(id)))
+            .map((line) => ({ key: line.key, sectionId: section.id, rowIndex })),
+        ),
       ),
-    [ownCharacterSet, visibleBlocks],
+    [ownCharacterSet, sections],
   );
+  const activeOwnLineIndex = ownLineTargets.findIndex((target) => target.key === activeOwnLineKey);
+  const canJumpPrevious = canIdentifyOwnLines && activeOwnLineIndex > 0;
+  const canJumpNext =
+    canIdentifyOwnLines &&
+    ownLineTargets.length > 0 &&
+    (activeOwnLineIndex === -1 || activeOwnLineIndex < ownLineTargets.length - 1);
+  const openSectionIds =
+    sectionOpenState?.sceneId === sceneId
+      ? sectionOpenState.ids
+      : new Set(sections[0] ? [sections[0].section.id] : []);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -82,6 +318,14 @@ export function ScriptReader({
     if (filtersOpen && !dialog.open) dialog.showModal();
     if (!filtersOpen && dialog.open) dialog.close();
   }, [filtersOpen]);
+
+  useEffect(() => {
+    if (!jumpFlash) return;
+    const timeout = window.setTimeout(() => {
+      setJumpFlash((current) => (current?.id === jumpFlash.id ? null : current));
+    }, 2000);
+    return () => window.clearTimeout(timeout);
+  }, [jumpFlash]);
 
   function openFilters() {
     setDraftFilters(filters);
@@ -98,58 +342,95 @@ export function ScriptReader({
   }
 
   function jumpToOwnLine(direction: "previous" | "next") {
-    if (ownLineIndexes.length === 0) return;
-    const nextIndex =
-      activeOwnLine === null
-        ? direction === "next"
-          ? 0
-          : ownLineIndexes.length - 1
-        : activeOwnLine + (direction === "next" ? 1 : -1);
-    if (nextIndex < 0 || nextIndex >= ownLineIndexes.length) return;
-    setActiveOwnLine(nextIndex);
-    const blockIndex = ownLineIndexes[nextIndex];
-    document.getElementById(`script-block-${blockIndex}`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
+    if (ownLineTargets.length === 0) return;
+    if (activeOwnLineIndex === -1 && direction === "previous") return;
+    const nextIndex = activeOwnLineIndex === -1
+      ? 0
+      : activeOwnLineIndex + (direction === "next" ? 1 : -1);
+    if (nextIndex < 0 || nextIndex >= ownLineTargets.length) return;
+
+    const target = ownLineTargets[nextIndex];
+    const currentTarget = ownLineTargets[activeOwnLineIndex];
+    const nextOpenSectionIds = new Set(openSectionIds);
+    if (currentTarget && currentTarget.sectionId !== target.sectionId) {
+      nextOpenSectionIds.delete(currentTarget.sectionId);
+    }
+    nextOpenSectionIds.add(target.sectionId);
+
+    setActiveOwnLineKey(target.key);
+    setClickedLineKey(null);
+    setJumpFlash({ lineKey: target.key, id: ++jumpFlashSequence.current });
+    setJumpTarget(target);
+    setSectionOpenState({
+      sceneId,
+      ids: nextOpenSectionIds,
     });
+  }
+
+  function selectLine(line: KeyedBlock) {
+    setClickedLineKey((current) => (current === line.key ? null : line.key));
+    setActiveOwnLineKey(
+      characterIdsFor(line.block).some((id) => ownCharacterSet.has(id)) ? line.key : null,
+    );
   }
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFilters(draftFilters);
-    setActiveOwnLine(null);
+    setClickedLineKey(null);
+    setJumpFlash(null);
+    setActiveOwnLineKey(null);
+    setJumpTarget(null);
     setFiltersOpen(false);
   }
 
   function changeScene(nextSceneId: string) {
     setSceneId(nextSceneId);
-    setActiveOwnLine(null);
+    setClickedLineKey(null);
+    setJumpFlash(null);
+    setActiveOwnLineKey(null);
+    setJumpTarget(null);
   }
 
-  const activeLinePosition = activeOwnLine;
-  const canIdentifyOwnLines = ownCharacterIds.length > 0;
+  function toggleSection(sectionId: string, isOpen: boolean) {
+    const next = new Set(openSectionIds);
+    if (isOpen) next.add(sectionId);
+    else next.delete(sectionId);
+    setSectionOpenState({ sceneId, ids: next });
+  }
+
+  function completeJump(lineKey: string) {
+    setJumpTarget((current) => (current?.key === lineKey ? null : current));
+  }
 
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="grid min-w-56 flex-1 gap-1 text-sm font-medium sm:max-w-md">
           Scene
-          <select
-            className="field"
-            disabled={scenes.length === 0}
-            onChange={(event) => changeScene(event.target.value)}
-            value={sceneId}
-          >
-            {scenes.length === 0 ? (
-              <option value="">No scenes available</option>
-            ) : (
-              scenes.map((scene) => (
-                <option key={scene.id} value={scene.id}>
-                  Scene {scene.sceneNumber}: {scene.title}
-                </option>
-              ))
-            )}
-          </select>
+          <span className="relative block">
+            <select
+              className="field appearance-none pr-10"
+              disabled={scenes.length === 0}
+              onChange={(event) => changeScene(event.target.value)}
+              value={sceneId}
+            >
+              {scenes.length === 0 ? (
+                <option value="">No scenes available</option>
+              ) : (
+                scenes.map((scene) => (
+                  <option key={scene.id} value={scene.id}>
+                    Scene {scene.sceneNumber}: {scene.title}
+                  </option>
+                ))
+              )}
+            </select>
+            <ChevronDown
+              aria-hidden="true"
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+              size={17}
+            />
+          </span>
         </label>
         <div className="flex flex-wrap gap-2">
           <button className="button-secondary gap-2" onClick={openFilters} type="button">
@@ -157,13 +438,22 @@ export function ScriptReader({
             Filters
           </button>
           <button
+            aria-pressed={filters.practiceMode}
+            className={`button-secondary gap-2 ${filters.practiceMode ? "script-practice-toggle--active" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
+            disabled={!canIdentifyOwnLines}
+            onClick={() => {
+              setFilters((current) => ({ ...current, practiceMode: !current.practiceMode }));
+              setClickedLineKey(null);
+            }}
+            title="Hide your dialogue until you click a line to reveal it"
+            type="button"
+          >
+            Practice mode
+          </button>
+          <button
             aria-label="Jump to previous line"
-            className="button-secondary gap-2"
-            disabled={
-              !canIdentifyOwnLines ||
-              ownLineIndexes.length === 0 ||
-              (activeLinePosition !== null && activeLinePosition <= 0)
-            }
+            className="button-secondary gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!canJumpPrevious}
             onClick={() => jumpToOwnLine("previous")}
             type="button"
           >
@@ -172,12 +462,8 @@ export function ScriptReader({
           </button>
           <button
             aria-label="Jump to next line"
-            className="button-secondary gap-2"
-            disabled={
-              !canIdentifyOwnLines ||
-              ownLineIndexes.length === 0 ||
-              activeLinePosition === ownLineIndexes.length - 1
-            }
+            className="button-secondary gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!canJumpNext}
             onClick={() => jumpToOwnLine("next")}
             type="button"
           >
@@ -199,7 +485,7 @@ export function ScriptReader({
           <h2 className="text-xl font-semibold">No scenes yet</h2>
           <p className="mt-2 text-[var(--muted)]">Create a scene before adding its script.</p>
         </div>
-      ) : visibleBlocks.length === 0 ? (
+      ) : sections.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-black/20 bg-white/50 p-10 text-center">
           <h2 className="text-xl font-semibold">
             {currentScene.blocks.length === 0 ? "No script for this scene yet" : "No lines match these filters"}
@@ -211,30 +497,26 @@ export function ScriptReader({
           </p>
         </div>
       ) : (
-        <ol aria-label={`Script for scene ${currentScene.sceneNumber}`} className="grid gap-3">
-          {visibleBlocks.map((block, index) => {
-            const isOwnLine = Boolean(block.characterId && ownCharacterSet.has(block.characterId));
-            const isHighlighted = filters.highlightMyLines && isOwnLine;
-            return (
-              <li
-                className={`scroll-mt-8 rounded-2xl border p-5 shadow-sm ${
-                  isHighlighted
-                    ? "border-[var(--accent)] bg-[#edf4ed]"
-                    : "border-black/10 bg-white/80"
-                }`}
-                id={`script-block-${index}`}
-                key={`${block.id}-${index}`}
-              >
-                {block.characterId && (
-                  <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--accent)]">
-                    {characterNames.get(block.characterId) ?? "Unknown character"}
-                  </p>
-                )}
-                <p className="whitespace-pre-wrap text-base leading-7">{block.text}</p>
-              </li>
-            );
-          })}
-        </ol>
+        <div className="grid gap-4">
+          {sections.map(({ section, rows }) => (
+            <SectionCard
+              charactersById={charactersById}
+              highlightMyLines={filters.highlightMyLines}
+              isOpen={openSectionIds.has(section.id)}
+              jumpFlash={jumpFlash}
+              jumpTarget={jumpTarget}
+              key={section.id}
+              onJumpComplete={completeJump}
+              onSelectLine={selectLine}
+              onToggle={toggleSection}
+              ownCharacterIds={ownCharacterSet}
+              practiceMode={filters.practiceMode}
+              rows={rows}
+              section={section}
+              clickedLineKey={clickedLineKey}
+            />
+          ))}
+        </div>
       )}
 
       <dialog
@@ -333,6 +615,10 @@ export function ScriptReader({
               </span>
             </span>
           </label>
+
+          <p className="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-[var(--muted)]">
+            Practice mode hides dialogue for your assigned characters until you click a line to reveal it.
+          </p>
 
           <div className="flex justify-end gap-2">
             <button

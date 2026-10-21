@@ -10,3 +10,13 @@ Add project-specific guidance here as the team makes decisions. Keep these rules
 - Add or update focused tests when changing security, scheduling, availability, or data-integrity behavior.
 - Use Drizzle migrations for schema changes; do not edit generated migrations to hide schema drift.
 - Preserve the existing Next.js, TypeScript, Tailwind, and shadcn/ui conventions; avoid unrelated refactors.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

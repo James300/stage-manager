@@ -27,6 +27,13 @@ Track implementation work here. Mark items complete with `[x]` and add new work 
 - [ ] Model characters and scene/actor assignments.
 - [ ] Add recurring and one-off availability data models.
 
+## Script Reading
+
+- [x] Display scripts in collapsible, scrollable sections with virtualized lines and jump navigation.
+- [x] Support shared speaker cues and visually grouped simultaneous dialogue.
+- [x] Add an original development-only Scene 1 sample that uses The Baker's Wife character record when available.
+- [ ] Add per-section audio attachment and playback, including rehearsal and karaoke tracks.
+
 ## Availability Collection
 
 - [ ] Create rehearsal-week administration workflow.

@@ -29,7 +29,8 @@ This application helps the director and stage manager plan rehearsals for a comm
 
 - Create and edit scenes with an act, title, description, and readiness status: Not Started, Early / Blocking, Mid / Working, or Polished / Show-Ready. Group scenes by act in the scene list.
 - Associate scenes with characters and the actors assigned to those characters.
-- Read script blocks by scene, follow selected characters, show or highlight a performer's own dialogue, and navigate between their lines.
+- Read scripts by scene in collapsible, scrollable sections; follow characters, highlight a performer's own dialogue, navigate between their lines, and distinguish dialogue spoken together.
+- Plan for optional per-section audio tracks to support solo practice and rehearsals, including karaoke tracks.
 
 ### Cast Directory and Profiles
 
@@ -88,7 +89,7 @@ All production-owned records should be scoped to a production/show identifier to
 - **CastMembers:** id, production_id, name, email, phone, and other needed profile details.
 - **Characters:** id, production_id, name; linked to assigned cast members.
 - **Scenes:** id, production_id, scene number, act, title, description, and readiness status.
-- **Scripts:** one row per scene, linked to its production and scene, with ordered script blocks stored as JSONB (`id`, `type`, optional `characterId`, and `text`).
+- **Scripts:** one row per scene, linked to its production and scene, with ordered script blocks stored as JSONB (`id`, `type`, optional `sectionId` / `sectionTitle`, `characterId` or `characterIds`, optional `concurrentGroupId`, and `text`). Blocks sharing a concurrent group are spoken at the same time; audio will be attached to sections in a later phase.
 - **SceneCharacters:** junction mapping scenes to characters.
 - **RehearsalWeeks:** id, production_id, start_date, end_date, availability deadline.
 - **AvailabilityTokens:** cast_member_id, week_id, token_hash, expires_at, revoked_at, and used_at/state.

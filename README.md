@@ -7,7 +7,7 @@ Rehearsal planning for the Into the Woods community theatre production.
 Requires Node.js 20.9 or later and npm.
 
 1. Install dependencies with `npm install`.
-2. Copy `.env.example` to `.env.local` and set `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAILS` (comma-separated administrator email addresses), and the email credentials used for sign-in links and password resets.
+2. Create a Neon development branch from the production branch, then copy `.env.example` to `.env.local`. Set `DATABASE_URL` to the development branch connection string, along with `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAILS` (comma-separated administrator email addresses), and the email credentials used for sign-in links and password resets. Local and production use the same self-hosted Better Auth integration; the branch supplies the user and credential records.
 3. Start the development server with `npm run dev`.
 
 The app is available at [http://localhost:3000](http://localhost:3000).

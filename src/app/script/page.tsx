@@ -1,6 +1,12 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { connection } from "next/server";
 import { PageLayout } from "@/app/page-layout";
+import {
+  createDevSampleBlocks,
+  devSampleCharacters,
+  devSampleFallbackBakersWife,
+  devSampleScene,
+} from "@/app/script/dev-sample-script";
 import { ScriptReader } from "@/app/script/script-reader";
 import { getDb } from "@/db";
 import { characters, performerCharacters, performers, scenes, scripts } from "@/db/schema";
@@ -47,10 +53,30 @@ export default async function ScriptPage({ searchParams }: ScriptPageProps) {
         ),
     ]);
   const scriptsByScene = new Map(scriptList.map((script) => [script.sceneId, script.blocks]));
+  const sceneOne = sceneList.find((scene) => scene.sceneNumber === 1);
+  const sampleSceneId = sceneOne?.id ?? devSampleScene.id;
+  const useDevelopmentSample =
+    process.env.NODE_ENV === "development" && !scriptsByScene.get(sampleSceneId)?.length;
+  const bakersWife = characterList.find(
+    (character) => character.name.trim().toLowerCase() === "the baker's wife",
+  );
+  const sampleBlocks = createDevSampleBlocks(bakersWife?.id ?? devSampleFallbackBakersWife.id);
+  const displayedScenes =
+    useDevelopmentSample && !sceneOne
+      ? [devSampleScene, ...sceneList]
+      : sceneList;
+  const displayedCharacters = useDevelopmentSample
+    ? [
+        ...characterList,
+        ...devSampleCharacters,
+        ...(bakersWife ? [] : [devSampleFallbackBakersWife]),
+      ]
+    : characterList;
   const selectedSceneId =
-    typeof requestedSceneId === "string" && sceneList.some((scene) => scene.id === requestedSceneId)
+    typeof requestedSceneId === "string" &&
+    displayedScenes.some((scene) => scene.id === requestedSceneId)
       ? requestedSceneId
-      : (sceneList[0]?.id ?? "");
+      : (displayedScenes[0]?.id ?? "");
 
   return (
     <PageLayout
@@ -59,13 +85,21 @@ export default async function ScriptPage({ searchParams }: ScriptPageProps) {
       description={`${production.name} · Read the script by scene`}
       title="Script"
     >
+      {useDevelopmentSample && (
+        <p className="mb-5 rounded-xl border border-amber-900/20 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          Development sample script for Scene 1. This original placeholder is not saved to the database.
+        </p>
+      )}
       <ScriptReader
-        characters={characterList}
+        characters={displayedCharacters}
         initialSceneId={selectedSceneId}
         ownCharacterIds={[...new Set(ownAssignments.map(({ characterId }) => characterId))]}
-        scenes={sceneList.map((scene) => ({
+        scenes={displayedScenes.map((scene) => ({
           ...scene,
-          blocks: scriptsByScene.get(scene.id) ?? [],
+          blocks:
+            useDevelopmentSample && scene.sceneNumber === 1
+              ? sampleBlocks
+              : (scriptsByScene.get(scene.id) ?? []),
         }))}
       />
     </PageLayout>

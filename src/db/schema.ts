@@ -148,6 +148,10 @@ export type ScriptBlock = {
   id: string;
   type: string;
   characterId?: string;
+  characterIds?: string[];
+  sectionId?: string;
+  sectionTitle?: string;
+  concurrentGroupId?: string;
   text: string;
 };
 
