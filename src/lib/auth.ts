@@ -31,6 +31,7 @@ export function isAdminEmail(email: string) {
 export async function isSupportedEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail) return false;
+  if (isAdminEmail(normalizedEmail)) return true;
 
   const [performer] = await getDb()
     .select({ id: performers.id })

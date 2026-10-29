@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { setInitialPassword } from "./actions";
 
 export function SetupPasswordForm() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -26,8 +24,7 @@ export function SetupPasswordForm() {
       if (result.error) {
         setError(result.error);
       } else {
-        router.replace("/rehearsals");
-        router.refresh();
+        window.location.replace("/rehearsals");
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to set your password.");

@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
 type LoginMode = "password" | "magic-link" | "sign-up" | "forgot-password";
 
 export function LoginForm() {
-  const router = useRouter();
   const [mode, setMode] = useState<LoginMode>("password");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -45,8 +43,7 @@ export function LoginForm() {
           setError(result.error.message ?? "Unable to sign in.");
           if (result.error.code === "EMAIL_NOT_VERIFIED") setUnverifiedEmail(email);
         } else {
-          router.replace("/rehearsals");
-          router.refresh();
+          window.location.replace("/rehearsals");
         }
       } else if (mode === "forgot-password") {
         const result = await authClient.requestPasswordReset({
