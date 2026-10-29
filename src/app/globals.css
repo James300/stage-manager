@@ -18,6 +18,11 @@
   box-sizing: border-box;
 }
 
+a,
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 body {
   margin: 0;
   background: var(--background);

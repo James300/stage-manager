@@ -20,7 +20,7 @@ This application helps the director and stage manager plan rehearsals for a comm
 - **UI:** Tailwind CSS and shadcn/ui primitives, with Lucide icons.
 - **Admin authentication:** Better Auth with role-aware authorization for Directors and Stage Managers.
 - **Cast availability:** Opaque, cryptographically random, expiring tokens; cast members do not need accounts.
-- **Email delivery:** Resend. SMS provider is not selected; evaluate Twilio or another transactional SMS provider when SMS is scheduled for implementation.
+- **Email delivery:** Nodemailer over configured SMTP. SMS provider is not selected; evaluate Twilio or another transactional SMS provider when SMS is scheduled for implementation.
 - **Hosting:** Vercel.
 
 ## Functional Requirements

@@ -1,11 +1,16 @@
-import { Resend } from "resend";
 import { APIError, betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { accounts, performers, sessions, users, verifications } from "@/db/schema";
+import { accounts, performers, productions, sessions, users, verifications } from "@/db/schema";
 import { magicLink } from "better-auth/plugins";
+import {
+  sendResetPasswordEmail,
+  sendSignInLinkEmail,
+  sendVerificationEmail,
+} from "@/lib/email";
+import { CURRENT_PRODUCTION_SLUG } from "@/lib/production-config";
 
 const authSchema = {
   user: users,
@@ -26,27 +31,20 @@ export function isAdminEmail(email: string) {
 export async function isSupportedEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail) return false;
-  if (isAdminEmail(normalizedEmail)) return true;
 
   const [performer] = await getDb()
     .select({ id: performers.id })
     .from(performers)
-    .where(sql`lower(${performers.email}) = ${normalizedEmail}`)
+    .innerJoin(productions, eq(performers.productionId, productions.id))
+    .where(
+      and(
+        eq(productions.slug, CURRENT_PRODUCTION_SLUG),
+        sql`lower(${performers.email}) = ${normalizedEmail}`,
+      ),
+    )
     .limit(1);
 
   return Boolean(performer);
-}
-
-async function sendEmail(to: string, subject: string, text: string) {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const emailFrom = process.env.EMAIL_FROM;
-  if (!resendApiKey || !emailFrom) {
-    throw new Error("RESEND_API_KEY and EMAIL_FROM are required to send authentication emails.");
-  }
-
-  const resend = new Resend(resendApiKey);
-  const result = await resend.emails.send({ from: emailFrom, to, subject, text });
-  if (result.error) throw new Error(`Unable to send authentication email: ${result.error.message}`);
 }
 
 function createAuth() {
@@ -76,21 +74,18 @@ function createAuth() {
             message: "This email address is not authorized to access this production.",
           });
         }
-        await sendEmail(
-          user.email,
-          "Reset your Stage Manager password",
-          `Reset your password by opening this link: ${url}`,
-        );
+        await sendResetPasswordEmail(user.email, url);
       },
     },
     emailVerification: {
       sendOnSignUp: true,
       sendVerificationEmail: async ({ user, url }) => {
-        await sendEmail(
-          user.email,
-          "Verify your Stage Manager account",
-          `Verify your account by opening this link: ${url}`,
-        );
+        if (!(await isSupportedEmail(user.email))) {
+          throw new APIError("FORBIDDEN", {
+            message: "This email address is not authorized to access this production.",
+          });
+        }
+        await sendVerificationEmail(user.email, url);
       },
     },
     databaseHooks: {
@@ -105,7 +100,13 @@ function createAuth() {
             const [performer] = await getDb()
               .select({ name: performers.name })
               .from(performers)
-              .where(sql`lower(${performers.email}) = ${user.email.trim().toLowerCase()}`)
+              .innerJoin(productions, eq(performers.productionId, productions.id))
+              .where(
+                and(
+                  eq(productions.slug, CURRENT_PRODUCTION_SLUG),
+                  sql`lower(${performers.email}) = ${user.email.trim().toLowerCase()}`,
+                ),
+              )
               .limit(1);
             const name = user.name.trim() || performer?.name || user.email.split("@")[0];
             return { data: { ...user, name } };
@@ -123,11 +124,7 @@ function createAuth() {
               message: "This email address is not authorized to access this production.",
             });
           }
-          await sendEmail(
-            email,
-            "Your Stage Manager sign-in link",
-            `Sign in or create your account by opening this link: ${url}`,
-          );
+          await sendSignInLinkEmail(email, url);
         },
       }),
       nextCookies(),
